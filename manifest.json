@@ -2,12 +2,12 @@
   "manifest_version": 3,
   "name": "CarCity Dev Helper",
   "version": "1.0.0",
-  "description": "Копирует название MR и ссылку на него, опционально открывает нужный топик в Telegram.",
+  "description": "Помощник разработчика CarCity",
   "permissions": [
     "storage"
   ],
   "options_ui": {
-    "page": "options.html",
+    "page": "options/options.html",
     "open_in_tab": true
   },
   "action": {
@@ -33,10 +33,15 @@
         "*://*/dashboard/merge_requests*"
       ],
       "js": [
-        "content.js"
+        "common/core.js",
+        "common/storage.js",
+        "common/clipboard.js",
+        "common/telegram.js",
+        "features/merge-requests/feature.js",
+        "features/merge-requests/content.js"
       ],
       "css": [
-        "content.css"
+        "features/merge-requests/content.css"
       ],
       "run_at": "document_idle"
     }

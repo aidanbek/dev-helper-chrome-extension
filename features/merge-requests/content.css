@@ -1,0 +1,49 @@
+/* Внешний вид кнопок — классы GitLab UI: btn-md в шапке (как Edit / Mark as done), btn-sm в списке.
+   Здесь только раскладка и состояния «скопировано» / «ошибка». */
+
+/* Ряд под строкой «X requested to merge … into …», над вкладками MR */
+.glmrh-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+
+/* Та же ширина, что у шапки MR при fluid-раскладке */
+.container-fluid:not(.container-limited) .glmrh-actions,
+.container-fluid.rd-page-container .glmrh-actions {
+  margin-left: auto;
+  margin-right: auto;
+  max-width: calc(1296px - var(--container-padding-x, 0px) * 2);
+}
+
+/* Шапка MR прилипла к верху при прокрутке — ряд не нужен, экономим высоту */
+@container sticky-header scroll-state(stuck: top) {
+  .glmrh-actions { display: none; }
+}
+
+.glmrh-done,
+.glmrh-done .gl-button-icon {
+  color: var(--gl-text-color-success, #108548) !important;
+}
+
+.glmrh-error,
+.glmrh-error .gl-button-icon {
+  color: var(--gl-text-color-danger, #dd2b0e) !important;
+}
+
+/* Фолбэк, если шапка MR не найдена */
+.glmrh-page-btn.glmrh-floating {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 2147483000;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .25);
+}
+
+/* Иконка-кнопка у строки в списке merge requests */
+.glmrh-row-btn {
+  margin: -4px 0 -4px 4px;
+  vertical-align: middle;
+}

@@ -1,0 +1,99 @@
+<!--
+  Секция настроек фичи «Merge requests». Встраивается в options/options.html.
+  Поля с data-field загружаются и сохраняются автоматически, правила топиков — в options.js.
+-->
+<fieldset>
+  <legend>Формат</legend>
+  <label for="mr-template">Шаблон копируемого текста</label>
+  <textarea id="mr-template" data-field="template" rows="4" spellcheck="false"></textarea>
+  <p class="hint">
+    Плейсхолдеры: <code>{title}</code> — название MR, <code>{url}</code> — ссылка,
+    <code>{iid}</code> — номер, <code>{project}</code> — путь проекта,
+    <code>{branch}</code> — исходная ветка, <code>{author}</code> — автор.
+    <code>{branch}</code> и <code>{author}</code> заполняются только при копировании со страницы MR
+    (в списке MR их в разметке нет). Пустые строки схлопываются.
+    <button type="button" class="secondary small" data-action="reset-template">Сбросить</button>
+  </p>
+  <div class="checkbox">
+    <input type="checkbox" id="mr-boldTitle" data-field="boldTitle">
+    <label for="mr-boldTitle">Название жирным (форматирование для Telegram)</label>
+  </div>
+  <p class="hint">
+    В буфер кладутся два варианта: форматированный (название жирным) и обычный текст.
+    Telegram и другие редакторы берут форматированный, а поля ввода без форматирования — обычный.
+    Если куда-то вставляется криво — снимите галочку.
+  </p>
+</fieldset>
+
+<fieldset>
+  <legend>Только мои MR</legend>
+  <label for="mr-myUsername">Мой username в GitLab</label>
+  <input type="text" id="mr-myUsername" data-field="myUsername" placeholder="username" spellcheck="false">
+  <p class="hint">
+    Если указан — кнопка «Копировать MR», кнопки в списке и горячая клавиша работают только на MR,
+    где вы автор. Username — как в адресе профиля (<code>gitlab.example.com/<b>username</b></code>),
+    не отображаемое имя. Несколько — через запятую. Пусто — на всех MR.
+  </p>
+</fieldset>
+
+<fieldset>
+  <legend>Горячая клавиша</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="mr-hotkey" data-field="hotkey">
+    <label for="mr-hotkey">Копировать по <code>Alt+Shift+C</code> на странице MR</label>
+  </div>
+  <p class="hint">
+    Комбинацию можно переназначить в <code>chrome://extensions/shortcuts</code>.
+    Переназначенная там комбинация работает поверх встроенной <code>Alt+Shift+C</code>.
+  </p>
+</fieldset>
+
+<fieldset>
+  <legend>Список merge requests</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="mr-listButtons" data-field="listButtons">
+    <label for="mr-listButtons">Кнопка копирования у каждой строки в списке MR</label>
+  </div>
+  <p class="hint">
+    Иконка копирования рядом с названием MR в списках проекта, группы и на
+    <code>/dashboard/merge_requests</code> — копирует так же, как кнопка на странице MR.
+  </p>
+</fieldset>
+
+<fieldset>
+  <legend>Telegram</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="mr-openTelegram" data-field="openTelegram">
+    <label for="mr-openTelegram">Открывать Telegram после копирования</label>
+  </div>
+  <div class="checkbox">
+    <input type="checkbox" id="mr-telegramApp" data-field="telegramApp">
+    <label for="mr-telegramApp">Открывать сразу в приложении (<code>tg://</code>)</label>
+  </div>
+  <p class="hint">
+    Страница <code>t.me</code> сама приложение не открывает, поэтому ссылка переводится в <code>tg://</code>
+    и браузер сразу предлагает открыть Telegram Desktop. Без галочки — ссылка открывается в новой вкладке, как есть.
+    Инвайт-ссылки (<code>t.me/+…</code>) всегда открываются в браузере.
+  </p>
+  <label for="mr-defaultTopicUrl">Ссылка на топик по умолчанию</label>
+  <input type="url" id="mr-defaultTopicUrl" data-field="defaultTopicUrl" placeholder="https://t.me/c/2001234567/45">
+  <p class="hint">
+    Ссылку на топик берут из Telegram: правый клик по топику → «Копировать ссылку».
+    Формат <code>https://t.me/c/&lt;chat_id&gt;/&lt;topic_id&gt;</code> или <code>https://t.me/&lt;username&gt;/&lt;topic_id&gt;</code>.
+  </p>
+</fieldset>
+
+<fieldset>
+  <legend>Топики по проектам</legend>
+  <p class="hint hint-top">
+    Слева — полный путь проекта или его часть, справа — ссылка на топик.
+    Вложенные подгруппы поддерживаются: путь <code>group/sub/subsub/project</code> совпадёт с правилом
+    <code>group</code>, <code>sub/subsub</code> или <code>group/sub/subsub/project</code>.
+    Сравнение идёт по сегментам пути, поэтому <code>billing</code> не совпадёт с <code>billing-legacy</code>;
+    внутри сегмента можно использовать <code>*</code> (например <code>group/*/api</code>).
+    Можно указать и хост: <code>gitlab.corp.ru/infra</code>.
+    Выигрывает самое вложенное правило; если ни одно не подошло — используется ссылка по умолчанию.
+  </p>
+  <div data-rules></div>
+  <button type="button" class="secondary" data-action="add-rule">+ Добавить правило</button>
+</fieldset>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CarCity Dev Helper — настройки</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="../icons/icon48.png" alt="" width="24" height="24">
+        <span>CarCity Dev Helper</span>
+      </div>
+      <div class="nav-caption">Фичи</div>
+      <nav id="nav"></nav>
+      <div class="version" id="version"></div>
+    </aside>
+
+    <main>
+      <div id="panels"></div>
+      <div class="savebar">
+        <button type="button" id="save">Сохранить</button>
+        <span id="status"></span>
+      </div>
+    </main>
+  </div>
+
+  <script src="../common/core.js"></script>
+  <script src="../common/storage.js"></script>
+
+  <!-- Фичи: feature.js + options.js. Новая фича подключается здесь же. -->
+  <script src="../features/merge-requests/feature.js"></script>
+  <script src="../features/merge-requests/options.js"></script>
+
+  <script src="options.js"></script>
+</body>
+</html>

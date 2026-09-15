@@ -1,25 +1,18 @@
+// Фича «Merge requests»: кнопка копирования на странице MR и в списках MR.
 (() => {
   'use strict';
 
+  const DevHelper = globalThis.DevHelper;
+  const feature = DevHelper.getFeature('mergeRequests');
+  const log = DevHelper.log;
+
   const BTN_ID = 'glmrh-copy-btn';
   const ROW_BTN_CLASS = 'glmrh-row-btn';
-  const LOG_PREFIX = '[CarCity Dev Helper]';
+  const ACTIONS_ID = 'glmrh-actions';
+  const BTN_TITLE = 'Скопировать название и ссылку MR (Shift+клик — инвертировать открытие Telegram)';
 
   const MR_PATH_RE = /\/-\/merge_requests\/(\d+)/;
   const MR_LINK_RE = /\/-\/merge_requests\/\d+(?:[?#]|$)/;
-
-  const DEFAULT_TEMPLATE = '{title}\n\n{url}';
-
-  const DEFAULTS = {
-    template: DEFAULT_TEMPLATE,
-    boldTitle: true,
-    hotkey: true,
-    listButtons: true,
-    openTelegram: true,
-    telegramApp: true,
-    defaultTopicUrl: '',
-    rules: []
-  };
 
   const TITLE_SELECTORS = [
     '[data-testid="title-content"]',
@@ -30,18 +23,8 @@
     'h1.title'
   ];
 
-  function log(...args) {
-    console.info(LOG_PREFIX, ...args);
-  }
-
   function getSettings() {
-    return new Promise((resolve) => {
-      try {
-        chrome.storage.sync.get(DEFAULTS, (items) => resolve(items || DEFAULTS));
-      } catch (e) {
-        resolve(DEFAULTS);
-      }
-    });
+    return DevHelper.storage.getFeature(feature.id, feature.defaults);
   }
 
   // ---------- страница MR ----------
@@ -103,6 +86,46 @@
     ]);
   }
 
+  // ---------- автор MR ----------
+
+  // <a class="author-link" data-username="aidanbek" href="/aidanbek"> — username, а не отображаемое имя
+  function usernameOf(link) {
+    if (!link) return '';
+    const fromData = link.getAttribute('data-username');
+    if (fromData) return fromData.toLowerCase();
+    const href = link.getAttribute('href') || '';
+    const m = href.match(/^(?:https?:\/\/[^/]+)?\/([^/?#]+)\/?$/);
+    return m ? decodeURIComponent(m[1]).toLowerCase() : '';
+  }
+
+  function getAuthorUsername() {
+    return usernameOf(document.querySelector(
+      '.merge-request-author-container .author-link, [data-testid="author-link"], .detail-page-header .author-link'
+    ));
+  }
+
+  function getRowAuthorUsername(row) {
+    if (!row) return '';
+    return usernameOf(row.querySelector(
+      '[data-testid="issuable-author"], .issuable-authored .author-link, .author-link'
+    ));
+  }
+
+  // "@aidanbek, other" -> ['aidanbek', 'other']
+  function parseUsernames(value) {
+    return (value || '')
+      .split(/[\s,;]+/)
+      .map((name) => name.replace(/^@/, '').trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  // Username не указан — кнопки на всех MR. Автора не удалось определить — тоже показываем:
+  // лучше лишняя кнопка, чем пропавшая из-за изменившейся разметки GitLab.
+  function isOwnMr(author) {
+    if (!myUsernames.length || !author) return true;
+    return myUsernames.includes(author);
+  }
+
   // ---------- правила топиков ----------
 
   // Полный путь проекта с любым числом вложенных подгрупп:
@@ -158,71 +181,7 @@
     return (settings.defaultTopicUrl || '').trim();
   }
 
-  const TG_HOSTS = ['t.me', 'www.t.me', 'telegram.me', 'www.telegram.me'];
-
-  // https://t.me/c/<channel>/<post>             -> tg://privatepost?channel=<channel>&post=<post>
-  // https://t.me/c/<channel>/<topic>/<post>     -> tg://privatepost?channel=..&post=<post>&thread=<topic>
-  // https://t.me/<username>[/<topic>]/<post>    -> tg://resolve?domain=<username>&post=..[&thread=..]
-  // Страница t.me сама приложение не открывает — поэтому идём сразу по tg://.
-  // Инвайты (+hash, joinchat) и прочие форматы не конвертируем — вернётся null.
-  function toTgUri(url) {
-    if (/^tg:/i.test(url)) return url;
-
-    let u;
-    try {
-      u = new URL(url);
-    } catch (e) {
-      return null;
-    }
-    if (!TG_HOSTS.includes(u.hostname.toLowerCase())) return null;
-
-    const parts = u.pathname.split('/').filter(Boolean);
-    const params = new URLSearchParams();
-    const isNum = (s) => /^\d+$/.test(s || '');
-    let base;
-    let rest;
-
-    if (parts[0] === 'c' && isNum(parts[1])) {
-      base = 'tg://privatepost';
-      params.set('channel', parts[1]);
-      rest = parts.slice(2);
-      if (!rest.length) return null;
-    } else if (/^[a-z][a-z0-9_]{3,}$/i.test(parts[0] || '') && parts[0].toLowerCase() !== 'joinchat') {
-      base = 'tg://resolve';
-      params.set('domain', parts[0]);
-      rest = parts.slice(1);
-    } else {
-      return null;
-    }
-
-    if (rest.length > 2 || !rest.every(isNum)) return null;
-    if (rest.length === 2) {
-      params.set('post', rest[1]);
-      params.set('thread', rest[0]);
-    } else if (rest.length === 1) {
-      params.set('post', rest[0]);
-    }
-
-    for (const key of ['thread', 'comment']) {
-      const value = u.searchParams.get(key);
-      if (isNum(value)) params.set(key, value);
-    }
-    return base + '?' + params.toString();
-  }
-
-  function openTelegram(topicUrl, inApp) {
-    const tgUri = inApp ? toTgUri(topicUrl) : null;
-    if (!tgUri) {
-      window.open(topicUrl, '_blank', 'noopener');
-      return;
-    }
-    // Внешний протокол не уводит со страницы — браузер лишь предлагает открыть приложение
-    const a = document.createElement('a');
-    a.href = tgUri;
-    a.click();
-  }
-
-  // ---------- буфер обмена ----------
+  // ---------- шаблон ----------
 
   function escapeHtml(value) {
     return value
@@ -275,73 +234,64 @@
       .replace(/\n/g, '<br>');
   }
 
-  // Кладёт в буфер оба флейвора через событие copy (нужен выделенный узел)
-  function copyViaEvent(text, html) {
-    let ok = false;
-    const onCopy = (event) => {
-      event.clipboardData.setData('text/plain', text);
-      if (html) event.clipboardData.setData('text/html', html);
-      event.preventDefault();
-      ok = true;
-    };
-
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.setAttribute('readonly', '');
-    ta.style.cssText = 'position:fixed;top:-1000px;left:-1000px;opacity:0;';
-    document.body.appendChild(ta);
-    ta.select();
-
-    document.addEventListener('copy', onCopy, true);
-    try {
-      if (!document.execCommand('copy')) ok = false;
-    } catch (e) {
-      ok = false;
-    }
-    document.removeEventListener('copy', onCopy, true);
-    ta.remove();
-    return ok;
-  }
-
-  async function copyToClipboard(text, html) {
-    if (html && navigator.clipboard && typeof ClipboardItem !== 'undefined') {
-      try {
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            'text/plain': new Blob([text], { type: 'text/plain' }),
-            'text/html': new Blob([html], { type: 'text/html' })
-          })
-        ]);
-        return true;
-      } catch (e) {
-        log('ClipboardItem не сработал, фолбэк на execCommand:', e && e.message);
-      }
-    }
-
-    if (!html) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch (e) {
-        log('writeText не сработал, фолбэк на execCommand:', e && e.message);
-      }
-    }
-
-    return copyViaEvent(text, html);
-  }
-
   // ---------- кнопки ----------
 
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const ICON_COPY = 'copy-to-clipboard';
+
+  // Фолбэк, если спрайт иконок GitLab на странице не нашёлся
+  const COPY_ICON_PATH =
+    'M5 2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V2Zm2-.5h6a.5.5 0 0 1 .5.5v8' +
+    'a.5.5 0 0 1-.5.5H7a.5.5 0 0 1-.5-.5V2a.5.5 0 0 1 .5-.5ZM3.5 4H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h6' +
+    'a2 2 0 0 0 2-2v-.5H9.5v.5a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5V6a.5.5 0 0 1 .5-.5h.5V4Z';
+
+  // /assets/icons-<hash>.svg — берём у любой иконки GitLab на странице
+  function iconSprite() {
+    const use = document.querySelector('svg use[href*=".svg#"]');
+    return use ? use.getAttribute('href').split('#')[0] : '';
+  }
+
+  function buildIcon(name) {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('class', 's16 gl-icon gl-button-icon');
+    svg.setAttribute('aria-hidden', 'true');
+
+    const sprite = iconSprite();
+    if (sprite) {
+      const use = document.createElementNS(SVG_NS, 'use');
+      use.setAttribute('href', sprite + '#' + name);
+      svg.appendChild(use);
+    } else {
+      svg.setAttribute('viewBox', '0 0 16 16');
+      const path = document.createElementNS(SVG_NS, 'path');
+      path.setAttribute('fill', 'currentColor');
+      path.setAttribute('fill-rule', 'evenodd');
+      path.setAttribute('d', COPY_ICON_PATH);
+      svg.appendChild(path);
+    }
+    return svg;
+  }
+
+  function setIcon(btn, name) {
+    const use = btn.querySelector('svg use');
+    if (use) use.setAttribute('href', use.getAttribute('href').split('#')[0] + '#' + name);
+  }
+
   function flash(btn, message, isError) {
-    const label = btn.querySelector('.glmrh-label');
-    const prev = label ? label.textContent : null;
+    const label = btn.querySelector('.gl-button-text');
+    const prevLabel = label ? label.textContent : null;
+    const prevLabelAttr = btn.getAttribute('aria-label');
     if (label) label.textContent = message;
-    else btn.title = message;
+    btn.setAttribute('aria-label', message);
+    setIcon(btn, isError ? 'error' : 'check');
 
     btn.classList.toggle('glmrh-error', !!isError);
     btn.classList.toggle('glmrh-done', !isError);
-    setTimeout(() => {
-      if (label) label.textContent = prev;
+    clearTimeout(btn._glmrhFlash);
+    btn._glmrhFlash = setTimeout(() => {
+      if (label) label.textContent = prevLabel;
+      btn.setAttribute('aria-label', prevLabelAttr);
+      setIcon(btn, ICON_COPY);
       btn.classList.remove('glmrh-done', 'glmrh-error');
     }, 1800);
   }
@@ -371,13 +321,13 @@
 
   async function handleCopy(btn, event, title, url) {
     const settings = await getSettings();
-    const template = (settings.template || DEFAULT_TEMPLATE);
+    const template = settings.template || feature.defaults.template;
     const data = buildData(title, url);
 
     const text = renderPlain(template, data);
     const html = settings.boldTitle ? renderHtml(template, data) : null;
 
-    const copied = await copyToClipboard(text, html);
+    const copied = await DevHelper.clipboard.write(text, html);
     if (!copied) {
       flash(btn, 'Не удалось скопировать', true);
       return;
@@ -388,7 +338,7 @@
     const topicUrl = resolveTopicUrl(settings, url);
 
     if (shouldOpen && topicUrl) {
-      openTelegram(topicUrl, settings.telegramApp);
+      DevHelper.telegram.open(topicUrl, settings.telegramApp);
       flash(btn, 'Скопировано, открываю Telegram');
     } else if (shouldOpen && !topicUrl) {
       flash(btn, 'Скопировано (топик не настроен)');
@@ -397,42 +347,87 @@
     }
   }
 
+  // Кнопка в стиле GitLab UI (gl-button) — стили берутся у самого GitLab
   function buildButton() {
     const btn = document.createElement('button');
     btn.id = BTN_ID;
     btn.type = 'button';
-    btn.className = 'glmrh-btn glmrh-floating';
-    btn.title = 'Скопировать название и ссылку MR (Shift+клик — инвертировать открытие Telegram)';
-    btn.innerHTML =
-      '<span class="glmrh-icon" aria-hidden="true">⧉</span>' +
-      '<span class="glmrh-label">Копировать MR</span>';
+    btn.className = 'gl-button btn btn-md btn-default glmrh-page-btn has-tooltip';
+    btn.title = BTN_TITLE;
+    btn.setAttribute('aria-label', 'Копировать MR');
+    btn.setAttribute('data-placement', 'bottom');
+    btn.setAttribute('data-container', 'body');
+
+    const label = document.createElement('span');
+    label.className = 'gl-button-text';
+    label.textContent = 'Копировать MR';
+    btn.append(buildIcon(ICON_COPY), label);
+
     btn.addEventListener('click', (event) => handleCopy(btn, event, getMrTitle(), getMrUrl()));
     return btn;
   }
 
-  function mount() {
-    if (!isMrPage()) return;
-    if (document.getElementById(BTN_ID)) return;
-
-    const btn = buildButton();
-    document.body.appendChild(btn);
-    log('кнопка вставлена (плавающая, правый нижний угол)');
+  // Ряд кнопок встаёт между строкой «X requested to merge … into …» и вкладками MR.
+  // Липкий дубль шапки (#js-merge-sticky-header) пропускаем.
+  function findHeaderAnchor() {
+    const candidates = document.querySelectorAll(
+      '.merge-request-details .merge-request-tabs-container, .merge-request-tabs-holder, .merge-request-tabs-container'
+    );
+    for (const el of candidates) {
+      if (!el.closest('#js-merge-sticky-header')) return el;
+    }
+    return null;
   }
 
-  function unmountIfNotMr() {
-    if (isMrPage()) return;
-    const btn = document.getElementById(BTN_ID);
-    if (btn) btn.remove();
+  function mount() {
+    let btn = document.getElementById(BTN_ID);
+    const anchor = findHeaderAnchor();
+
+    if (anchor) {
+      let actions = document.getElementById(ACTIONS_ID);
+      if (!actions) {
+        actions = document.createElement('div');
+        actions.id = ACTIONS_ID;
+        actions.className = 'glmrh-actions';
+      }
+      if (actions.nextElementSibling !== anchor) anchor.insertAdjacentElement('beforebegin', actions);
+
+      if (!btn) btn = buildButton();
+      if (btn.parentElement !== actions) {
+        btn.classList.remove('glmrh-floating');
+        actions.appendChild(btn);
+        log('кнопка вставлена в шапку MR');
+      }
+      return;
+    }
+
+    // Разметка GitLab не распознана — плавающая кнопка в правом нижнем углу
+    if (!btn) {
+      btn = buildButton();
+      btn.classList.add('glmrh-floating');
+      document.body.appendChild(btn);
+      log('шапка MR не найдена, кнопка вставлена плавающей');
+    }
+  }
+
+  function unmount() {
+    for (const id of [BTN_ID, ACTIONS_ID]) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
+    }
   }
 
   // ---------- список merge requests ----------
 
+  // Иконка-кнопка как у «Copy branch name» в шапке MR
   function buildRowButton(title, url) {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'glmrh-btn ' + ROW_BTN_CLASS;
-    btn.title = 'Скопировать название и ссылку MR (Shift+клик — инвертировать открытие Telegram)';
-    btn.innerHTML = '<span class="glmrh-icon" aria-hidden="true">⧉</span>';
+    btn.className = 'gl-button btn btn-icon btn-sm btn-default btn-default-tertiary ' + ROW_BTN_CLASS + ' has-tooltip';
+    btn.title = BTN_TITLE;
+    btn.setAttribute('aria-label', 'Копировать MR');
+    btn.setAttribute('data-container', 'body');
+    btn.appendChild(buildIcon(ICON_COPY));
     btn.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -441,8 +436,8 @@
     return btn;
   }
 
-  function mountListButtons(enabled) {
-    if (!enabled || isMrPage()) return;
+  function mountListButtons() {
+    if (isMrPage()) return;
 
     const links = document.querySelectorAll('a[href*="/-/merge_requests/"]');
     let added = 0;
@@ -452,10 +447,17 @@
       if (!MR_LINK_RE.test(href)) continue;
 
       const row = link.closest('[data-testid="merge-request"], li, .issuable-info-container');
-      const already = row
+      const existing = row
         ? row.querySelector('.' + ROW_BTN_CLASS)
-        : link.nextElementSibling && link.nextElementSibling.classList.contains(ROW_BTN_CLASS);
-      if (already) continue;
+        : link.nextElementSibling && link.nextElementSibling.classList.contains(ROW_BTN_CLASS)
+          ? link.nextElementSibling
+          : null;
+
+      if (!isOwnMr(getRowAuthorUsername(row))) {
+        if (existing) existing.remove();
+        continue;
+      }
+      if (existing) continue;
 
       const title = cleanTitle(link.textContent);
       if (!title) continue;
@@ -475,25 +477,42 @@
 
   // ---------- жизненный цикл ----------
 
-  let listButtonsEnabled = DEFAULTS.listButtons;
-  let hotkeyEnabled = DEFAULTS.hotkey;
+  // До загрузки настроек ничего не вставляем — иначе у выключенной фичи мелькнёт кнопка
+  let enabled = false;
+  let listButtonsEnabled = feature.defaults.listButtons;
+  let hotkeyEnabled = feature.defaults.hotkey;
+  let myUsernames = [];
   let scheduled = false;
+
+  function showOnThisMr() {
+    return enabled && isMrPage() && isOwnMr(getAuthorUsername());
+  }
+
+  function applySettings(values) {
+    if ('enabled' in values) enabled = !!values.enabled;
+    if ('hotkey' in values) hotkeyEnabled = !!values.hotkey;
+    if ('listButtons' in values) listButtonsEnabled = !!values.listButtons;
+    if ('myUsername' in values) {
+      myUsernames = parseUsernames(values.myUsername);
+      // Фильтр поменялся — перестраиваем кнопки списка с нуля
+      unmountListButtons();
+    }
+  }
 
   function sync() {
     if (scheduled) return;
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
-      unmountIfNotMr();
-      mount();
-      if (listButtonsEnabled) mountListButtons(true);
+      if (showOnThisMr()) mount();
+      else unmount();
+      if (enabled && listButtonsEnabled) mountListButtons();
       else unmountListButtons();
     });
   }
 
   getSettings().then((settings) => {
-    listButtonsEnabled = !!settings.listButtons;
-    hotkeyEnabled = !!settings.hotkey;
+    applySettings(settings);
     sync();
   });
 
@@ -502,7 +521,7 @@
   let lastCopyAt = 0;
 
   function copyCurrentMr() {
-    if (!isMrPage()) return;
+    if (!showOnThisMr()) return;
     // Команда из background и локальный keydown могут прийти оба — не дублируем
     if (Date.now() - lastCopyAt < 700) return;
     lastCopyAt = Date.now();
@@ -513,7 +532,7 @@
   }
 
   document.addEventListener('keydown', (event) => {
-    if (!hotkeyEnabled) return;
+    if (!enabled || !hotkeyEnabled) return;
     if (!event.altKey || !event.shiftKey || event.ctrlKey || event.metaKey) return;
     if ((event.code || '') !== 'KeyC') return;
     event.preventDefault();
@@ -522,19 +541,14 @@
 
   try {
     chrome.runtime.onMessage.addListener((message) => {
-      if (message && message.type === 'copy-mr') copyCurrentMr();
+      if (message && message.type === 'command' && message.command === 'copy-mr') copyCurrentMr();
     });
   } catch (e) { /* messaging недоступен — остаётся локальный keydown */ }
 
   try {
-    chrome.storage.onChanged.addListener((changes, area) => {
-      if (area !== 'sync') return;
-      if (changes.hotkey) hotkeyEnabled = !!changes.hotkey.newValue;
-      if (changes.listButtons) {
-        listButtonsEnabled = !!changes.listButtons.newValue;
-        if (!listButtonsEnabled) unmountListButtons();
-        sync();
-      }
+    DevHelper.storage.onFeatureChanged(feature.id, (changes) => {
+      applySettings(changes);
+      sync();
     });
   } catch (e) { /* storage недоступен — работаем на дефолтах */ }
 
@@ -555,6 +569,6 @@
   // GitLab дорисовывает содержимое асинхронно — несколько повторных попыток
   [0, 300, 1000, 2500].forEach((delay) => setTimeout(sync, delay));
 
-  log('загружен на', location.pathname, '| MR-страница:', isMrPage());
+  log('Merge requests: загружен на', location.pathname, '| MR-страница:', isMrPage());
   sync();
 })();
