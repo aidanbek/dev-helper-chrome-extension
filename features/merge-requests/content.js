@@ -9,7 +9,6 @@
   const BTN_ID = 'glmrh-copy-btn';
   const ROW_BTN_CLASS = 'glmrh-row-btn';
   const ACTIONS_ID = 'glmrh-actions';
-  const BTN_TITLE = 'Скопировать название и ссылку MR (Shift+клик — инвертировать открытие Telegram)';
 
   const MR_PATH_RE = /\/-\/merge_requests\/(\d+)/;
   const MR_LINK_RE = /\/-\/merge_requests\/\d+(?:[?#]|$)/;
@@ -279,8 +278,6 @@
 
   function flash(btn, message, isError) {
     const label = btn.querySelector('.gl-button-text');
-    const prevLabel = label ? label.textContent : null;
-    const prevLabelAttr = btn.getAttribute('aria-label');
     if (label) label.textContent = message;
     btn.setAttribute('aria-label', message);
     setIcon(btn, isError ? 'error' : 'check');
@@ -289,12 +286,88 @@
     btn.classList.toggle('glmrh-done', !isError);
     clearTimeout(btn._glmrhFlash);
     btn._glmrhFlash = setTimeout(() => {
-      if (label) label.textContent = prevLabel;
-      btn.setAttribute('aria-label', prevLabelAttr);
-      setIcon(btn, ICON_COPY);
       btn.classList.remove('glmrh-done', 'glmrh-error');
+      setIcon(btn, ICON_COPY);
+      renderButton(btn);
     }, 1800);
   }
+
+  // ---------- название кнопки ----------
+
+  const LABEL_SHARE = 'Отправить на ревью';
+  const LABEL_COPY = 'Скопировать ссылку на MR';
+  const HINT_COPY = 'Скопировать название и ссылку MR';
+
+  // Название зависит от того, что сделает клик: настройка «открывать Telegram»,
+  // найден ли топик для проекта этой MR и зажат ли Shift (он инвертирует настройку)
+  function describeAction(url, shiftKey) {
+    const current = settings || feature.defaults;
+    const topicUrl = resolveTopicUrl(current, url);
+    const opens = shiftKey ? !current.openTelegram : !!current.openTelegram;
+
+    if (opens && topicUrl) {
+      return {
+        label: LABEL_SHARE,
+        hint: HINT_COPY + ' и открыть топик в Telegram' + (shiftKey ? '' : '. Shift+клик — только скопировать')
+      };
+    }
+    if (opens) {
+      return { label: LABEL_COPY, hint: HINT_COPY + '. Топик в Telegram для этого проекта не настроен' };
+    }
+    return {
+      label: LABEL_COPY,
+      hint: HINT_COPY + (topicUrl && !shiftKey ? '. Shift+клик — ещё и открыть топик в Telegram' : '')
+    };
+  }
+
+  // GitLab при показе тултипа переносит title в data-original-title — обновляем оба
+  function setTooltip(btn, text) {
+    if (btn.hasAttribute('data-original-title')) btn.setAttribute('data-original-title', text);
+    else btn.title = text;
+  }
+
+  function renderButton(btn) {
+    // Не перебиваем «Скопировано…», пока оно на экране
+    if (btn.classList.contains('glmrh-done') || btn.classList.contains('glmrh-error')) return;
+
+    const url = btn.dataset.glmrhUrl || getMrUrl();
+    const { label, hint } = describeAction(url, shiftHeld && hoveredBtn === btn);
+    const text = btn.querySelector('.gl-button-text');
+    if (text) text.textContent = label;
+    btn.setAttribute('aria-label', label);
+    setTooltip(btn, hint);
+  }
+
+  function renderAllButtons() {
+    const page = document.getElementById(BTN_ID);
+    if (page) renderButton(page);
+    document.querySelectorAll('.' + ROW_BTN_CLASS).forEach(renderButton);
+  }
+
+  // Shift меняет название только у кнопки под курсором — иначе шапка мигала бы при наборе текста
+  let shiftHeld = false;
+  let hoveredBtn = null;
+
+  function trackHover(btn) {
+    btn.addEventListener('mouseenter', () => {
+      hoveredBtn = btn;
+      renderButton(btn);
+    });
+    btn.addEventListener('mouseleave', () => {
+      if (hoveredBtn === btn) hoveredBtn = null;
+      renderButton(btn);
+    });
+  }
+
+  function setShift(value) {
+    if (shiftHeld === value) return;
+    shiftHeld = value;
+    if (hoveredBtn) renderButton(hoveredBtn);
+  }
+
+  document.addEventListener('keydown', (event) => { if (event.key === 'Shift') setShift(true); }, true);
+  document.addEventListener('keyup', (event) => { if (event.key === 'Shift') setShift(false); }, true);
+  window.addEventListener('blur', () => setShift(false));
 
   function buildData(title, url) {
     const parsed = (() => {
@@ -353,17 +426,16 @@
     btn.id = BTN_ID;
     btn.type = 'button';
     btn.className = 'gl-button btn btn-md btn-default glmrh-page-btn has-tooltip';
-    btn.title = BTN_TITLE;
-    btn.setAttribute('aria-label', 'Копировать MR');
     btn.setAttribute('data-placement', 'bottom');
     btn.setAttribute('data-container', 'body');
 
     const label = document.createElement('span');
     label.className = 'gl-button-text';
-    label.textContent = 'Копировать MR';
     btn.append(buildIcon(ICON_COPY), label);
 
     btn.addEventListener('click', (event) => handleCopy(btn, event, getMrTitle(), getMrUrl()));
+    trackHover(btn);
+    renderButton(btn);
     return btn;
   }
 
@@ -424,10 +496,11 @@
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'gl-button btn btn-icon btn-sm btn-default btn-default-tertiary ' + ROW_BTN_CLASS + ' has-tooltip';
-    btn.title = BTN_TITLE;
-    btn.setAttribute('aria-label', 'Копировать MR');
+    btn.dataset.glmrhUrl = url;
     btn.setAttribute('data-container', 'body');
     btn.appendChild(buildIcon(ICON_COPY));
+    trackHover(btn);
+    renderButton(btn);
     btn.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -478,6 +551,7 @@
   // ---------- жизненный цикл ----------
 
   // До загрузки настроек ничего не вставляем — иначе у выключенной фичи мелькнёт кнопка
+  let settings = null;
   let enabled = false;
   let listButtonsEnabled = feature.defaults.listButtons;
   let hotkeyEnabled = feature.defaults.hotkey;
@@ -489,6 +563,7 @@
   }
 
   function applySettings(values) {
+    settings = { ...(settings || feature.defaults), ...values };
     if ('enabled' in values) enabled = !!values.enabled;
     if ('hotkey' in values) hotkeyEnabled = !!values.hotkey;
     if ('listButtons' in values) listButtonsEnabled = !!values.listButtons;
@@ -548,6 +623,8 @@
   try {
     DevHelper.storage.onFeatureChanged(feature.id, (changes) => {
       applySettings(changes);
+      // Telegram, топики — меняют название уже вставленных кнопок
+      renderAllButtons();
       sync();
     });
   } catch (e) { /* storage недоступен — работаем на дефолтах */ }

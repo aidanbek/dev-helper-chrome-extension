@@ -7,7 +7,7 @@
     slug: 'merge-requests',
     title: 'Merge requests',
     description:
-      'Кнопка «Копировать MR» на странице merge request и в списках MR: копирует название и ссылку, ' +
+      'Кнопка «Отправить на ревью» на странице merge request и в списках MR: копирует название и ссылку, ' +
       'по желанию открывает топик в Telegram. Shift+клик инвертирует открытие Telegram.',
     defaults: {
       enabled: true,
