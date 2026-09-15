@@ -48,6 +48,13 @@
       .trim();
   }
 
+  // Префиксы, по которым GitLab считает MR черновиком (включая устаревшие WIP)
+  const DRAFT_TITLE_RE = /^\s*(?:\[draft\]|\(draft\)|draft:|draft\s+-\s|\[wip\]|\(wip\)|wip:)/i;
+
+  function isDraftTitle(title) {
+    return DRAFT_TITLE_RE.test(title || '');
+  }
+
   function getMrTitle() {
     for (const sel of TITLE_SELECTORS) {
       const el = document.querySelector(sel);
@@ -297,6 +304,7 @@
   const LABEL_SHARE = 'Отправить на ревью';
   const LABEL_COPY = 'Скопировать ссылку на MR';
   const HINT_COPY = 'Скопировать название и ссылку MR';
+  const HINT_DRAFT = 'MR в статусе Draft — снимите его, чтобы отправить на ревью';
 
   // Название зависит от того, что сделает клик: настройка «открывать Telegram»,
   // найден ли топик для проекта этой MR и зажат ли Shift (он инвертирует настройку)
@@ -335,7 +343,15 @@
     const text = btn.querySelector('.gl-button-text');
     if (text) text.textContent = label;
     btn.setAttribute('aria-label', label);
-    setTooltip(btn, hint);
+    setTooltip(btn, btn.disabled ? HINT_DRAFT : hint);
+  }
+
+  // Draft-MR на ревью не отправляем: кнопка неактивна, пока статус не снимут
+  function setDraft(btn, isDraft) {
+    if (btn.disabled === isDraft) return;
+    btn.disabled = isDraft;
+    btn.classList.toggle('disabled', isDraft);
+    renderButton(btn);
   }
 
   function renderAllButtons() {
@@ -393,6 +409,7 @@
   }
 
   async function handleCopy(btn, event, title, url) {
+    if (btn.disabled) return;
     const settings = await getSettings();
     const template = settings.template || feature.defaults.template;
     const data = buildData(title, url);
@@ -470,16 +487,15 @@
         actions.appendChild(btn);
         log('кнопка вставлена в шапку MR');
       }
-      return;
-    }
-
-    // Разметка GitLab не распознана — плавающая кнопка в правом нижнем углу
-    if (!btn) {
+    } else if (!btn) {
+      // Разметка GitLab не распознана — плавающая кнопка в правом нижнем углу
       btn = buildButton();
       btn.classList.add('glmrh-floating');
       document.body.appendChild(btn);
       log('шапка MR не найдена, кнопка вставлена плавающей');
     }
+
+    setDraft(btn, isDraftTitle(getMrTitle()));
   }
 
   function unmount() {
@@ -492,14 +508,16 @@
   // ---------- список merge requests ----------
 
   // Иконка-кнопка как у «Copy branch name» в шапке MR
-  function buildRowButton(title, url) {
+  function buildRowButton(link, title, url) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'gl-button btn btn-icon btn-sm btn-default btn-default-tertiary ' + ROW_BTN_CLASS + ' has-tooltip';
     btn.dataset.glmrhUrl = url;
+    btn._glmrhLink = link;
     btn.setAttribute('data-container', 'body');
     btn.appendChild(buildIcon(ICON_COPY));
     trackHover(btn);
+    setDraft(btn, isDraftTitle(title));
     renderButton(btn);
     btn.addEventListener('click', (event) => {
       event.preventDefault();
@@ -530,14 +548,18 @@
         if (existing) existing.remove();
         continue;
       }
-      if (existing) continue;
+      if (existing) {
+        // В строке бывает несколько ссылок на MR (например, счётчик комментариев) — статус берём по названию
+        if (existing._glmrhLink === link) setDraft(existing, isDraftTitle(link.textContent));
+        continue;
+      }
 
       const title = cleanTitle(link.textContent);
       if (!title) continue;
 
       // link.href уже абсолютный; отрезаем хвост вида /diffs, #note_1, ?tab=
       const url = link.href.replace(/(\/-\/merge_requests\/\d+).*$/, '$1');
-      link.insertAdjacentElement('afterend', buildRowButton(title, url));
+      link.insertAdjacentElement('afterend', buildRowButton(link, title, url));
       added++;
     }
 
@@ -603,7 +625,7 @@
 
     mount();
     const btn = document.getElementById(BTN_ID);
-    if (btn) handleCopy(btn, null, getMrTitle(), getMrUrl());
+    if (btn && !btn.disabled) handleCopy(btn, null, getMrTitle(), getMrUrl());
   }
 
   document.addEventListener('keydown', (event) => {
@@ -629,9 +651,10 @@
     });
   } catch (e) { /* storage недоступен — работаем на дефолтах */ }
 
-  // GitLab перерисовывает шапку и список — держим кнопки на месте
+  // GitLab перерисовывает шапку и список — держим кнопки на месте.
+  // characterData — Vue меняет название MR («Draft: …» после «Mark as ready») правкой текстового узла
   const observer = new MutationObserver(sync);
-  observer.observe(document.documentElement, { childList: true, subtree: true });
+  observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 
   for (const method of ['pushState', 'replaceState']) {
     const original = history[method];
