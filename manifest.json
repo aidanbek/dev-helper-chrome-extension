@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "CarCity Dev Helper",
+  "version": "1.0.0",
+  "description": "Копирует название MR и ссылку на него, опционально открывает нужный топик в Telegram.",
+  "permissions": [
+    "storage"
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "action": {
+    "default_title": "CarCity Dev Helper — настройки",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*/*/-/merge_requests*",
+        "*://*/dashboard/merge_requests*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "commands": {
+    "copy-mr": {
+      "suggested_key": {
+        "default": "Alt+Shift+C"
+      },
+      "description": "Скопировать название и ссылку текущего MR"
+    }
+  }
+}
