@@ -1,11 +1,21 @@
-// Фича «Merge requests»: поведение секции настроек сверх полей data-field — правила топиков.
+// Фича «Merge requests»: поведение секции настроек сверх полей data-field — списки правил по проектам.
 (() => {
   'use strict';
 
   const DevHelper = globalThis.DevHelper;
   const feature = DevHelper.getFeature('mergeRequests');
 
-  function addRuleRow(root, rule = { project: '', url: '' }) {
+  // Списки «путь проекта → ссылка»: data-rules="<имя>" в options.html, field — настройка в storage
+  const RULE_LISTS = {
+    topics: { field: 'rules', urlPlaceholder: 'https://t.me/c/2001234567/45' },
+    jira: { field: 'jiraRules', urlPlaceholder: 'https://jira.example.com' }
+  };
+
+  function listOf(root, name) {
+    return root.querySelector('[data-rules="' + name + '"]');
+  }
+
+  function addRuleRow(root, name, rule = { project: '', url: '' }) {
     const row = document.createElement('div');
     row.className = 'row';
 
@@ -18,7 +28,7 @@
     const url = document.createElement('input');
     url.type = 'url';
     url.className = 'url';
-    url.placeholder = 'https://t.me/c/2001234567/45';
+    url.placeholder = RULE_LISTS[name].urlPlaceholder;
     url.value = rule.url || '';
 
     const remove = document.createElement('button');
@@ -29,7 +39,7 @@
     remove.addEventListener('click', () => row.remove());
 
     row.append(project, url, remove);
-    root.querySelector('[data-rules]').appendChild(row);
+    listOf(root, name).appendChild(row);
   }
 
   DevHelper.registerFeature({
@@ -39,23 +49,31 @@
         root.querySelector('[data-action="reset-template"]').addEventListener('click', () => {
           root.querySelector('[data-field="template"]').value = feature.defaults.template;
         });
-        root.querySelector('[data-action="add-rule"]').addEventListener('click', () => addRuleRow(root));
+        root.querySelectorAll('[data-add-rule]').forEach((button) => {
+          button.addEventListener('click', () => addRuleRow(root, button.dataset.addRule));
+        });
       },
 
       load(root, values) {
-        root.querySelector('[data-rules]').innerHTML = '';
-        (values.rules || []).forEach((rule) => addRuleRow(root, rule));
-        if (!(values.rules || []).length) addRuleRow(root);
+        for (const [name, { field }] of Object.entries(RULE_LISTS)) {
+          const rules = values[field] || [];
+          listOf(root, name).innerHTML = '';
+          rules.forEach((rule) => addRuleRow(root, name, rule));
+          if (!rules.length) addRuleRow(root, name);
+        }
       },
 
       collect(root) {
-        const rules = Array.from(root.querySelectorAll('[data-rules] .row'))
-          .map((row) => ({
-            project: row.querySelector('.project').value.trim(),
-            url: row.querySelector('.url').value.trim()
-          }))
-          .filter((rule) => rule.project && rule.url);
-        return { rules };
+        const values = {};
+        for (const [name, { field }] of Object.entries(RULE_LISTS)) {
+          values[field] = Array.from(listOf(root, name).querySelectorAll('.row'))
+            .map((row) => ({
+              project: row.querySelector('.project').value.trim(),
+              url: row.querySelector('.url').value.trim()
+            }))
+            .filter((rule) => rule.project && rule.url);
+        }
+        return values;
       }
     }
   });

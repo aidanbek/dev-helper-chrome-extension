@@ -7,6 +7,7 @@
   const log = DevHelper.log;
 
   const BTN_ID = 'glmrh-copy-btn';
+  const JIRA_BTN_ID = 'glmrh-jira-btn';
   const ROW_BTN_CLASS = 'glmrh-row-btn';
   const ACTIONS_ID = 'glmrh-actions';
 
@@ -132,59 +133,25 @@
     return myUsernames.includes(author);
   }
 
-  // ---------- правила топиков ----------
+  // ---------- правила по проектам ----------
 
-  // Полный путь проекта с любым числом вложенных подгрупп:
-  // /group/sub/subsub/project/-/merge_requests/12 -> group/sub/subsub/project
-  function projectPathOf(pathname) {
-    const idx = pathname.indexOf('/-/');
-    if (idx === -1) return '';
-    return pathname.slice(1, idx).replace(/^\/+|\/+$/g, '');
-  }
-
-  function normalizePattern(value) {
-    return (value || '').trim().toLowerCase()
-      .replace(/^https?:\/\//, '')
-      .replace(/^\/+|\/+$/g, '');
-  }
-
-  // Правило матчится по сегментам пути, а не по подстроке:
-  // "billing" совпадёт с "group/billing" и "group/billing/api",
-  // но не с "group/billing-legacy". Поддерживается "*" внутри сегмента.
-  function ruleMatches(pattern, candidate) {
-    if (!pattern || !candidate) return false;
-    const escaped = pattern
-      .split('*')
-      .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-      .join('[^/]*');
-    return new RegExp('(^|/)' + escaped + '(/|$)').test(candidate);
-  }
+  const projectPathOf = DevHelper.rules.projectPathOf;
 
   function resolveTopicUrl(settings, mrUrl) {
-    let host = location.host;
-    let project = projectPathOf(location.pathname);
-    try {
-      const u = new URL(mrUrl, location.origin);
-      host = u.host;
-      project = projectPathOf(u.pathname);
-    } catch (e) { /* остаёмся на текущей странице */ }
+    return DevHelper.rules.resolve(settings.rules, settings.defaultTopicUrl, mrUrl);
+  }
 
-    project = project.toLowerCase();
-    const withHost = (host + '/' + project).toLowerCase();
-    let best = null;
+  // Ключ задачи Jira: CC-123. Только заглавные — как в Jira; «release-1» в ветке не примем за задачу
+  const JIRA_KEY_RE = /(?<![A-Za-z0-9])([A-Z][A-Z0-9_]+-[1-9]\d*)(?!\d)/;
 
-    for (const rule of settings.rules || []) {
-      const pattern = normalizePattern(rule.project);
-      const url = (rule.url || '').trim();
-      if (!pattern || !url) continue;
-      if (!ruleMatches(pattern, project) && !ruleMatches(pattern, withHost)) continue;
+  function findJiraKey(text) {
+    const m = (text || '').match(JIRA_KEY_RE);
+    return m ? m[1] : '';
+  }
 
-      // Чем длиннее (более вложенный) путь в правиле, тем выше приоритет
-      const weight = pattern.split('/').length * 1000 + pattern.length;
-      if (!best || weight > best.weight) best = { weight, url };
-    }
-    if (best) return best.url;
-    return (settings.defaultTopicUrl || '').trim();
+  // https://jira.example.com, https://jira.example.com/browse/ -> https://jira.example.com/browse/CC-123
+  function jiraIssueUrl(base, key) {
+    return base.replace(/\/+$/, '').replace(/\/browse$/i, '') + '/browse/' + key;
   }
 
   // ---------- шаблон ----------
@@ -244,12 +211,19 @@
 
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const ICON_COPY = 'copy-to-clipboard';
+  const ICON_EXTERNAL = 'external-link';
 
   // Фолбэк, если спрайт иконок GitLab на странице не нашёлся
-  const COPY_ICON_PATH =
-    'M5 2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V2Zm2-.5h6a.5.5 0 0 1 .5.5v8' +
-    'a.5.5 0 0 1-.5.5H7a.5.5 0 0 1-.5-.5V2a.5.5 0 0 1 .5-.5ZM3.5 4H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h6' +
-    'a2 2 0 0 0 2-2v-.5H9.5v.5a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5V6a.5.5 0 0 1 .5-.5h.5V4Z';
+  const FALLBACK_ICON_PATHS = {
+    [ICON_COPY]:
+      'M5 2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V2Zm2-.5h6a.5.5 0 0 1 .5.5v8' +
+      'a.5.5 0 0 1-.5.5H7a.5.5 0 0 1-.5-.5V2a.5.5 0 0 1 .5-.5ZM3.5 4H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h6' +
+      'a2 2 0 0 0 2-2v-.5H9.5v.5a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5V6a.5.5 0 0 1 .5-.5h.5V4Z',
+    [ICON_EXTERNAL]:
+      'M9 1.75A.75.75 0 0 1 9.75 1h4.5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0V3.56L8.53 8.53a.75.75 ' +
+      '0 0 1-1.06-1.06l4.97-4.97H9.75A.75.75 0 0 1 9 1.75ZM3.5 3A1.5 1.5 0 0 0 2 4.5v8A1.5 1.5 0 0 0 3.5 14h8' +
+      'a1.5 1.5 0 0 0 1.5-1.5V10a.75.75 0 0 0-1.5 0v2.5h-8v-8H6A.75.75 0 0 0 6 3H3.5Z'
+  };
 
   // /assets/icons-<hash>.svg — берём у любой иконки GitLab на странице
   function iconSprite() {
@@ -272,7 +246,7 @@
       const path = document.createElementNS(SVG_NS, 'path');
       path.setAttribute('fill', 'currentColor');
       path.setAttribute('fill-rule', 'evenodd');
-      path.setAttribute('d', COPY_ICON_PATH);
+      path.setAttribute('d', FALLBACK_ICON_PATHS[name]);
       svg.appendChild(path);
     }
     return svg;
@@ -357,6 +331,8 @@
   function renderAllButtons() {
     const page = document.getElementById(BTN_ID);
     if (page) renderButton(page);
+    const jira = document.getElementById(JIRA_BTN_ID);
+    if (jira) renderJiraButton(jira);
     document.querySelectorAll('.' + ROW_BTN_CLASS).forEach(renderButton);
   }
 
@@ -456,6 +432,60 @@
     return btn;
   }
 
+  // ---------- кнопка «Открыть задачу в Jira» ----------
+
+  const LABEL_JIRA = 'Открыть задачу в Jira';
+  const HINT_JIRA_NO_KEY = 'Ключ задачи Jira (например CC-123) не найден ни в ветке, ни в названии MR';
+  const HINT_JIRA_NO_URL = 'Jira для этого проекта не настроена — укажите URL в настройках расширения';
+
+  // Ключ ищем сначала в исходной ветке, затем в названии MR
+  function describeJira() {
+    const current = settings || feature.defaults;
+    const key = findJiraKey(getSourceBranch()) || findJiraKey(getMrTitle());
+    if (!key) return { hint: HINT_JIRA_NO_KEY };
+
+    const base = DevHelper.rules.resolve(current.jiraRules, current.defaultJiraUrl, getMrUrl());
+    if (!base) return { hint: HINT_JIRA_NO_URL };
+
+    const url = jiraIssueUrl(base, key);
+    return { url, hint: 'Открыть ' + key + ' в Jira' };
+  }
+
+  // Ветка дорисовывается асинхронно — перерисовываем на каждом sync.
+  // Меняем только атрибуты: их MutationObserver не слушает, иначе sync зациклился бы
+  function renderJiraButton(link) {
+    const { url, hint } = describeJira();
+    if (url) {
+      if (link.getAttribute('href') !== url) link.setAttribute('href', url);
+    } else if (link.hasAttribute('href')) {
+      link.removeAttribute('href');
+    }
+    link.classList.toggle('glmrh-disabled', !url);
+    link.setAttribute('aria-disabled', String(!url));
+    setTooltip(link, hint);
+  }
+
+  // Ссылка, а не кнопка: работают средний клик и «открыть в новой вкладке».
+  // Неактивное состояние — своим классом: у .btn.disabled GitLab отключает pointer-events и тултип
+  function buildJiraButton() {
+    const link = document.createElement('a');
+    link.id = JIRA_BTN_ID;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.className = 'gl-button btn btn-md btn-default has-tooltip';
+    link.setAttribute('data-placement', 'bottom');
+    link.setAttribute('data-container', 'body');
+    link.setAttribute('aria-label', LABEL_JIRA);
+
+    const label = document.createElement('span');
+    label.className = 'gl-button-text';
+    label.textContent = LABEL_JIRA;
+    link.append(buildIcon(ICON_EXTERNAL), label);
+
+    renderJiraButton(link);
+    return link;
+  }
+
   // Ряд кнопок встаёт между строкой «X requested to merge … into …» и вкладками MR.
   // Липкий дубль шапки (#js-merge-sticky-header) пропускаем.
   function findHeaderAnchor() {
@@ -468,41 +498,67 @@
     return null;
   }
 
+  function ensureActions(anchor) {
+    let actions = document.getElementById(ACTIONS_ID);
+    if (!actions) {
+      actions = document.createElement('div');
+      actions.id = ACTIONS_ID;
+      actions.className = 'glmrh-actions';
+    }
+    if (actions.nextElementSibling !== anchor) anchor.insertAdjacentElement('beforebegin', actions);
+    return actions;
+  }
+
+  function removeById(id) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+
   function mount() {
+    const showCopy = showOnThisMr();
+    const showJira = jiraOnThisMr();
+    if (!showCopy) removeById(BTN_ID);
+    if (!showJira) removeById(JIRA_BTN_ID);
+
     let btn = document.getElementById(BTN_ID);
+    let jira = document.getElementById(JIRA_BTN_ID);
     const anchor = findHeaderAnchor();
 
-    if (anchor) {
-      let actions = document.getElementById(ACTIONS_ID);
-      if (!actions) {
-        actions = document.createElement('div');
-        actions.id = ACTIONS_ID;
-        actions.className = 'glmrh-actions';
-      }
-      if (actions.nextElementSibling !== anchor) anchor.insertAdjacentElement('beforebegin', actions);
+    if (anchor && (showCopy || showJira)) {
+      const actions = ensureActions(anchor);
 
-      if (!btn) btn = buildButton();
-      if (btn.parentElement !== actions) {
-        btn.classList.remove('glmrh-floating');
-        actions.appendChild(btn);
-        log('кнопка вставлена в шапку MR');
+      if (showCopy) {
+        if (!btn) btn = buildButton();
+        if (btn.parentElement !== actions) {
+          btn.classList.remove('glmrh-floating');
+          actions.prepend(btn);
+          log('кнопка вставлена в шапку MR');
+        }
       }
-    } else if (!btn) {
-      // Разметка GitLab не распознана — плавающая кнопка в правом нижнем углу
+      if (showJira) {
+        if (!jira) jira = buildJiraButton();
+        if (jira.parentElement !== actions) {
+          actions.appendChild(jira);
+          log('кнопка Jira вставлена в шапку MR');
+        }
+      }
+    } else if (showCopy && !btn) {
+      // Разметка GitLab не распознана — плавающая кнопка в правом нижнем углу (Jira без шапки не показываем)
       btn = buildButton();
       btn.classList.add('glmrh-floating');
       document.body.appendChild(btn);
       log('шапка MR не найдена, кнопка вставлена плавающей');
     }
 
-    setDraft(btn, isDraftTitle(getMrTitle()));
+    const actions = document.getElementById(ACTIONS_ID);
+    if (actions && !actions.children.length) actions.remove();
+
+    if (btn) setDraft(btn, isDraftTitle(getMrTitle()));
+    if (jira) renderJiraButton(jira);
   }
 
   function unmount() {
-    for (const id of [BTN_ID, ACTIONS_ID]) {
-      const el = document.getElementById(id);
-      if (el) el.remove();
-    }
+    for (const id of [BTN_ID, JIRA_BTN_ID, ACTIONS_ID]) removeById(id);
   }
 
   // ---------- список merge requests ----------
@@ -577,6 +633,7 @@
   let enabled = false;
   let listButtonsEnabled = feature.defaults.listButtons;
   let hotkeyEnabled = feature.defaults.hotkey;
+  let jiraButtonEnabled = feature.defaults.jiraButton;
   let myUsernames = [];
   let scheduled = false;
 
@@ -584,11 +641,17 @@
     return enabled && isMrPage() && isOwnMr(getAuthorUsername());
   }
 
+  // Задачу полезно открыть и при ревью чужой MR — фильтр «Только мои MR» не применяем
+  function jiraOnThisMr() {
+    return enabled && isMrPage() && jiraButtonEnabled;
+  }
+
   function applySettings(values) {
     settings = { ...(settings || feature.defaults), ...values };
     if ('enabled' in values) enabled = !!values.enabled;
     if ('hotkey' in values) hotkeyEnabled = !!values.hotkey;
     if ('listButtons' in values) listButtonsEnabled = !!values.listButtons;
+    if ('jiraButton' in values) jiraButtonEnabled = !!values.jiraButton;
     if ('myUsername' in values) {
       myUsernames = parseUsernames(values.myUsername);
       // Фильтр поменялся — перестраиваем кнопки списка с нуля
@@ -601,7 +664,7 @@
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
-      if (showOnThisMr()) mount();
+      if (showOnThisMr() || jiraOnThisMr()) mount();
       else unmount();
       if (enabled && listButtonsEnabled) mountListButtons();
       else unmountListButtons();
@@ -645,7 +708,7 @@
   try {
     DevHelper.storage.onFeatureChanged(feature.id, (changes) => {
       applySettings(changes);
-      // Telegram, топики — меняют название уже вставленных кнопок
+      // Telegram, топики, Jira — меняют название и ссылки уже вставленных кнопок
       renderAllButtons();
       sync();
     });

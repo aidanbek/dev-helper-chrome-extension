@@ -33,6 +33,12 @@
   color: var(--gl-text-color-danger, #dd2b0e) !important;
 }
 
+/* Кнопка Jira без ключа задачи или без URL Jira: pointer-events оставляем, чтобы работал тултип */
+.glmrh-disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
 /* Фолбэк, если шапка MR не найдена */
 .glmrh-page-btn.glmrh-floating {
   position: fixed;

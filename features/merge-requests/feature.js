@@ -8,7 +8,8 @@
     title: 'Merge requests',
     description:
       'Кнопка «Отправить на ревью» на странице merge request и в списках MR: копирует название и ссылку, ' +
-      'по желанию открывает топик в Telegram. Shift+клик инвертирует открытие Telegram.',
+      'по желанию открывает топик в Telegram. Shift+клик инвертирует открытие Telegram. ' +
+      'Кнопка «Открыть задачу в Jira» — по ключу задачи из ветки или названия MR.',
     defaults: {
       enabled: true,
       myUsername: '',
@@ -19,7 +20,10 @@
       openTelegram: true,
       telegramApp: true,
       defaultTopicUrl: '',
-      rules: []
+      rules: [],
+      jiraButton: true,
+      defaultJiraUrl: '',
+      jiraRules: []
     },
     legacyKeys: [
       'template',

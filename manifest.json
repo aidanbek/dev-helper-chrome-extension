@@ -37,6 +37,7 @@
         "common/storage.js",
         "common/clipboard.js",
         "common/telegram.js",
+        "common/rules.js",
         "features/merge-requests/feature.js",
         "features/merge-requests/content.js"
       ],

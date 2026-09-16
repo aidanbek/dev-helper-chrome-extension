@@ -1,6 +1,6 @@
 <!--
   Секция настроек фичи «Merge requests». Встраивается в options/options.html.
-  Поля с data-field загружаются и сохраняются автоматически, правила топиков — в options.js.
+  Поля с data-field загружаются и сохраняются автоматически, списки правил (data-rules) — в options.js.
 -->
 <fieldset>
   <legend>Формат</legend>
@@ -94,6 +94,35 @@
     Можно указать и хост: <code>gitlab.corp.ru/infra</code>.
     Выигрывает самое вложенное правило; если ни одно не подошло — используется ссылка по умолчанию.
   </p>
-  <div data-rules></div>
-  <button type="button" class="secondary" data-action="add-rule">+ Добавить правило</button>
+  <div data-rules="topics"></div>
+  <button type="button" class="secondary" data-add-rule="topics">+ Добавить правило</button>
+</fieldset>
+
+<fieldset>
+  <legend>Jira</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="mr-jiraButton" data-field="jiraButton">
+    <label for="mr-jiraButton">Кнопка «Открыть задачу в Jira» на странице MR</label>
+  </div>
+  <p class="hint">
+    Ключ задачи (например <code>CC-123</code>) ищется сначала в исходной ветке, затем в названии MR.
+    Учитываются только заглавные буквы, как в Jira. Кнопка показывается на всех MR, независимо от «Только мои MR».
+    Если ключ не найден или Jira для проекта не настроена — кнопка неактивна, причина в подсказке.
+  </p>
+  <label for="mr-defaultJiraUrl">URL Jira по умолчанию</label>
+  <input type="url" id="mr-defaultJiraUrl" data-field="defaultJiraUrl" placeholder="https://jira.example.com">
+  <p class="hint">
+    Адрес Jira без пути: ссылка на задачу строится как <code>&lt;URL&gt;/browse/&lt;ключ&gt;</code>.
+  </p>
+</fieldset>
+
+<fieldset>
+  <legend>Jira по проектам</legend>
+  <p class="hint hint-top">
+    Слева — путь проекта, справа — URL Jira. Правила сопоставляются так же, как топики:
+    по сегментам пути, с <code>*</code> внутри сегмента и с необязательным хостом;
+    выигрывает самое вложенное правило, иначе — URL по умолчанию.
+  </p>
+  <div data-rules="jira"></div>
+  <button type="button" class="secondary" data-add-rule="jira">+ Добавить правило</button>
 </fieldset>
