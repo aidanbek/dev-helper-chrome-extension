@@ -157,13 +157,14 @@ textarea {
   font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   resize: vertical;
 }
-input[type="text"], input[type="url"] {
+input[type="text"], input[type="url"], input[type="number"] {
   width: 100%;
   padding: 7px 10px;
   border: 1px solid #bfbfc3;
   border-radius: 6px;
   font-size: 13px;
 }
+input[type="number"] { width: 100px; }
 
 .checkbox { display: flex; align-items: center; gap: 8px; font-weight: 500; }
 .checkbox + .checkbox { margin-top: 12px; }

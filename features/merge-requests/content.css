@@ -24,7 +24,9 @@
 }
 
 .glmrh-done,
-.glmrh-done .gl-button-icon {
+.glmrh-done .gl-button-icon,
+.glmrh-success,
+.glmrh-success .gl-button-icon {
   color: var(--gl-text-color-success, #108548) !important;
 }
 

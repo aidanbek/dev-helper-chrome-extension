@@ -126,3 +126,41 @@
   <div data-rules="jira"></div>
   <button type="button" class="secondary" data-add-rule="jira">+ Добавить правило</button>
 </fieldset>
+
+<fieldset>
+  <legend>Апрув MR</legend>
+  <label for="mr-minApprovals">Минимум апрувов</label>
+  <input type="number" id="mr-minApprovals" data-field="minApprovals" min="0" step="1">
+  <p class="hint">
+    MR считается апрувнутым, когда апрувов не меньше этого числа и в нём нет нерешённых тредов.
+    Тогда «Отправить на ревью» гаснет с отметкой «MR апрувнут», а «Создать MR на stage» становится активной.
+    Апрувы и треды читаются со страницы MR: виджет апрувов есть только на вкладке Overview.
+  </p>
+</fieldset>
+
+<fieldset>
+  <legend>MR на stage</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="mr-stageButton" data-field="stageButton">
+    <label for="mr-stageButton">Кнопка «Создать MR на stage» на странице MR</label>
+  </div>
+  <p class="hint">
+    Открывает форму нового MR из исходной ветки текущего MR в ветку stage — проверить и нажать
+    «Create merge request» нужно самому. Кнопка активна, когда MR не Draft, без конфликтов
+    и апрувнут (см. «Апрув MR»); иначе в подсказке — что мешает.
+    На MR, который сам нацелен в stage, кнопки нет. Показывается на всех MR, независимо от «Только мои MR».
+  </p>
+  <label for="mr-defaultStageBranch">Ветка stage по умолчанию</label>
+  <input type="text" id="mr-defaultStageBranch" data-field="defaultStageBranch" placeholder="stage" spellcheck="false">
+  <p class="hint">Пусто — <code>stage</code>.</p>
+</fieldset>
+
+<fieldset>
+  <legend>Ветка stage по проектам</legend>
+  <p class="hint hint-top">
+    Слева — путь проекта, справа — имя ветки. Правила сопоставляются так же, как топики и Jira;
+    выигрывает самое вложенное правило, иначе — ветка по умолчанию.
+  </p>
+  <div data-rules="stage"></div>
+  <button type="button" class="secondary" data-add-rule="stage">+ Добавить правило</button>
+</fieldset>

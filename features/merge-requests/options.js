@@ -5,10 +5,12 @@
   const DevHelper = globalThis.DevHelper;
   const feature = DevHelper.getFeature('mergeRequests');
 
-  // Списки «путь проекта → ссылка»: data-rules="<имя>" в options.html, field — настройка в storage
+  // Списки «путь проекта → значение»: data-rules="<имя>" в options.html, field — настройка в storage,
+  // valueType — тип поля справа (ссылка или имя ветки)
   const RULE_LISTS = {
-    topics: { field: 'rules', urlPlaceholder: 'https://t.me/c/2001234567/45' },
-    jira: { field: 'jiraRules', urlPlaceholder: 'https://jira.example.com' }
+    topics: { field: 'rules', urlPlaceholder: 'https://t.me/c/2001234567/45', valueType: 'url' },
+    jira: { field: 'jiraRules', urlPlaceholder: 'https://jira.example.com', valueType: 'url' },
+    stage: { field: 'stageRules', urlPlaceholder: 'stage', valueType: 'text' }
   };
 
   function listOf(root, name) {
@@ -26,8 +28,9 @@
     project.value = rule.project || '';
 
     const url = document.createElement('input');
-    url.type = 'url';
+    url.type = RULE_LISTS[name].valueType;
     url.className = 'url';
+    url.spellcheck = false;
     url.placeholder = RULE_LISTS[name].urlPlaceholder;
     url.value = rule.url || '';
 
@@ -73,6 +76,12 @@
             }))
             .filter((rule) => rule.project && rule.url);
         }
+
+        // Числовое поле приходит строкой; пустое или кривое — порог по умолчанию
+        const approvals = parseInt(root.querySelector('[data-field="minApprovals"]').value, 10);
+        values.minApprovals = Number.isFinite(approvals) && approvals >= 0
+          ? approvals
+          : feature.defaults.minApprovals;
         return values;
       }
     }

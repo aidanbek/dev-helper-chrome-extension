@@ -9,7 +9,9 @@
     description:
       'Кнопка «Отправить на ревью» на странице merge request и в списках MR: копирует название и ссылку, ' +
       'по желанию открывает топик в Telegram. Shift+клик инвертирует открытие Telegram. ' +
-      'Кнопка «Открыть задачу в Jira» — по ключу задачи из ветки или названия MR.',
+      'Кнопка «Открыть задачу в Jira» — по ключу задачи из ветки или названия MR. ' +
+      'Апрувнутый MR (апрувы и все треды решены) гасит «Отправить на ревью» ' +
+      'и открывает кнопку «Создать MR на stage».',
     // Content script регистрирует background на хостах из настройки hosts, к которым выдан доступ
     content: {
       sitesLabel: 'Адреса GitLab',
@@ -40,7 +42,11 @@
       rules: [],
       jiraButton: true,
       defaultJiraUrl: '',
-      jiraRules: []
+      jiraRules: [],
+      stageButton: true,
+      defaultStageBranch: 'stage',
+      stageRules: [],
+      minApprovals: 2
     },
     legacyKeys: [
       'template',

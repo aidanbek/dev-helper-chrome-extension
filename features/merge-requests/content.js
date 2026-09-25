@@ -8,6 +8,7 @@
 
   const BTN_ID = 'glmrh-copy-btn';
   const JIRA_BTN_ID = 'glmrh-jira-btn';
+  const STAGE_BTN_ID = 'glmrh-stage-btn';
   const ROW_BTN_CLASS = 'glmrh-row-btn';
   const ACTIONS_ID = 'glmrh-actions';
   const CONFLICT_ID = 'glmrh-conflict-warning';
@@ -214,6 +215,7 @@
   const ICON_COPY = 'copy-to-clipboard';
   const ICON_EXTERNAL = 'external-link';
   const ICON_WARNING = 'warning-solid';
+  const ICON_MERGE_REQUEST = 'merge-request';
 
   // Фолбэк, если спрайт иконок GitLab на странице не нашёлся
   const FALLBACK_ICON_PATHS = {
@@ -227,7 +229,11 @@
     [ICON_EXTERNAL]:
       'M9 1.75A.75.75 0 0 1 9.75 1h4.5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0V3.56L8.53 8.53a.75.75 ' +
       '0 0 1-1.06-1.06l4.97-4.97H9.75A.75.75 0 0 1 9 1.75ZM3.5 3A1.5 1.5 0 0 0 2 4.5v8A1.5 1.5 0 0 0 3.5 14h8' +
-      'a1.5 1.5 0 0 0 1.5-1.5V10a.75.75 0 0 0-1.5 0v2.5h-8v-8H6A.75.75 0 0 0 6 3H3.5Z'
+      'a1.5 1.5 0 0 0 1.5-1.5V10a.75.75 0 0 0-1.5 0v2.5h-8v-8H6A.75.75 0 0 0 6 3H3.5Z',
+    [ICON_MERGE_REQUEST]:
+      'M4 1a2 2 0 1 0 0 4a2 2 0 1 0 0-4Zm0 1a1 1 0 1 1 0 2a1 1 0 1 1 0-2ZM3.5 5.5h1v5.5h-1ZM4 11a2 2 0 1 0 0 4' +
+      'a2 2 0 1 0 0-4Zm0 1a1 1 0 1 1 0 2a1 1 0 1 1 0-2ZM12 11a2 2 0 1 0 0 4a2 2 0 1 0 0-4Zm0 1a1 1 0 1 1 0 2' +
+      'a1 1 0 1 1 0-2ZM11.5 5.5h1V11h-1ZM8 4.5h4.5v1H8ZM8 2.5v5L5.5 5Z'
   };
 
   // /assets/icons-<hash>.svg — берём у любой иконки GitLab на странице
@@ -284,6 +290,13 @@
   const LABEL_COPY = 'Скопировать ссылку на MR';
   const HINT_COPY = 'Скопировать название и ссылку MR';
   const HINT_DRAFT = 'MR в статусе Draft — снимите его, чтобы отправить на ревью';
+  const LABEL_APPROVED = 'MR апрувнут';
+  const HINT_APPROVED = 'MR набрал нужное число апрувов и все треды решены — отправлять на ревью не нужно';
+
+  // Почему кнопка неактивна: Draft — на ревью рано, пока статус не снимут;
+  // апрувнут — на ревью уже не нужно, кнопка в состоянии success
+  const BLOCKED_DRAFT = 'draft';
+  const BLOCKED_APPROVED = 'approved';
   const HINT_CONFLICTS = 'В MR конфликты с целевой веткой — разрешите их перед отправкой на ревью';
   const HINT_CONFLICTS_OTHER = 'В MR конфликты с целевой веткой — автору нужно разрешить их перед мержем';
 
@@ -309,10 +322,32 @@
     };
   }
 
-  // GitLab при показе тултипа переносит title в data-original-title — обновляем оба
+  // Тултипы GitLab (tooltips.vue) при первом наведении запоминают title у себя и переносят его
+  // в data-original-title — дальнейшие правки атрибутов не видны, пока элемент не уберут из DOM.
+  // Поэтому при смене текста переставляем элемент на то же место: GitLab сбрасывает запомненный
+  // тултип (он следит за удалением узла) и при следующем наведении прочитает новый title
   function setTooltip(btn, text) {
-    if (btn.hasAttribute('data-original-title')) btn.setAttribute('data-original-title', text);
-    else btn.title = text;
+    const tracked = btn.hasAttribute('data-original-title');
+    const current = tracked ? btn.getAttribute('data-original-title') : btn.getAttribute('title');
+    if (current === text) return;
+
+    btn.title = text;
+    if (!tracked) return;
+    // При уничтожении тултип возвращает title из data-original-title — кладём туда тоже новый текст
+    btn.setAttribute('data-original-title', text);
+    if (btn.parentNode) btn.parentNode.insertBefore(btn, btn.nextSibling);
+    reshowTooltip(btn);
+  }
+
+  // Курсор остался над элементом — после пересоздания тултипа показываем его снова.
+  // GitLab подключает тултип на mouseenter асинхронно (Vue), поэтому событие шлём дважды: создать и показать
+  function reshowTooltip(btn) {
+    if (!btn.matches(':hover')) return;
+    const enter = () => {
+      if (btn.isConnected && btn.matches(':hover')) btn.dispatchEvent(new MouseEvent('mouseenter'));
+    };
+    setTimeout(enter, 0);
+    setTimeout(enter, 100);
   }
 
   function renderButton(btn) {
@@ -320,19 +355,34 @@
     if (btn.classList.contains('glmrh-done') || btn.classList.contains('glmrh-error')) return;
 
     const url = btn.dataset.glmrhUrl || getMrUrl();
-    const { label, hint } = describeAction(url, shiftHeld && hoveredBtn === btn);
+    const blocked = btn._glmrhBlocked;
+    const action = describeAction(url, shiftHeld && hoveredBtn === btn);
+    const label = blocked === BLOCKED_APPROVED ? LABEL_APPROVED : action.label;
     const text = btn.querySelector('.gl-button-text');
     if (text) text.textContent = label;
     btn.setAttribute('aria-label', label);
-    setTooltip(btn, btn.disabled ? HINT_DRAFT : btn._glmrhConflicts ? HINT_CONFLICTS + '. ' + hint : hint);
+    setTooltip(btn,
+      blocked === BLOCKED_APPROVED ? HINT_APPROVED
+        : blocked === BLOCKED_DRAFT ? HINT_DRAFT
+          : btn._glmrhConflicts ? HINT_CONFLICTS + '. ' + action.hint
+            : action.hint);
   }
 
-  // Draft-MR на ревью не отправляем: кнопка неактивна, пока статус не снимут
-  function setDraft(btn, isDraft) {
-    if (btn.disabled === isDraft) return;
-    btn.disabled = isDraft;
-    btn.classList.toggle('disabled', isDraft);
+  function setBlocked(btn, reason) {
+    if (btn._glmrhBlocked === reason) return;
+    btn._glmrhBlocked = reason;
+    btn.disabled = !!reason;
+    btn.classList.toggle('disabled', !!reason);
+    btn.classList.toggle('glmrh-success', reason === BLOCKED_APPROVED);
+    setIcon(btn, reason === BLOCKED_APPROVED ? 'check' : ICON_COPY);
     renderButton(btn);
+  }
+
+  // В списке MR апрувов в разметке нет — там гасим только Draft
+  function blockReason(title, url) {
+    if (isDraftTitle(title)) return BLOCKED_DRAFT;
+    if (url && describeApproval(url).approved) return BLOCKED_APPROVED;
+    return '';
   }
 
   function renderAllButtons() {
@@ -340,6 +390,8 @@
     if (page) renderButton(page);
     const jira = document.getElementById(JIRA_BTN_ID);
     if (jira) renderJiraButton(jira);
+    const stage = document.getElementById(STAGE_BTN_ID);
+    if (stage) renderStageButton(stage);
     document.querySelectorAll('.' + ROW_BTN_CLASS).forEach(renderButton);
   }
 
@@ -493,6 +545,159 @@
     return link;
   }
 
+  // ---------- апрув MR ----------
+
+  // Всё берём из DOM страницы MR, без запросов: GitLab сам перерисовывает виджет апрувов
+  // и счётчик тредов, а MutationObserver подхватывает изменения сразу.
+  // Апрувнутый MR гасит «Отправить на ревью» и открывает «Создать MR на stage»
+
+  function textOf(el) {
+    return (el && el.textContent || '').replace(/\s+/g, ' ').trim();
+  }
+
+  // Сводка виджета апрувов: «Approved by» и аватары одобривших (у пользователя без аватара — identicon).
+  // null — виджета нет на странице (он есть только на вкладке Overview)
+  function readApprovals() {
+    const summary = document.querySelector('[data-testid="approvals-summary-content"], .approvals-summary');
+    if (!summary) return null;
+    const users = new Set();
+    summary.querySelectorAll('img.avatar, .gl-avatar').forEach((el) => {
+      const link = el.closest('a[href]');
+      users.add(link ? link.getAttribute('href') : el);
+    });
+    return users.size;
+  }
+
+  // Счётчик в шапке MR: «3 open threads» / «3 unresolved threads» / «All threads resolved!», в старых версиях «2/5 threads resolved».
+  // Язык интерфейса любой — смотрим только на числа. null — обсуждения ещё не загружены
+  function readUnresolved() {
+    const counter = document.querySelector('[data-testid="discussions-counter-text"], .discussions-counter');
+    if (!counter) {
+      // Счётчика нет и когда в MR нет ни одного resolvable-треда — но это ясно, только если обсуждения уже на странице
+      return document.querySelector('#notes-list, .main-notes-list') ? 0 : null;
+    }
+    const text = textOf(counter);
+    const ratio = text.match(/(\d+)\s*\/\s*(\d+)/);
+    if (ratio) return Math.max(0, Number(ratio[2]) - Number(ratio[1]));
+    const count = text.match(/\d+/);
+    return count ? Number(count[0]) : 0;
+  }
+
+  // На вкладках Changes / Commits виджета апрувов может не быть — помним последнее увиденное по этому MR
+  let approvalSeen = { url: '', approvals: null, unresolved: null };
+
+  function readApprovalState(url) {
+    if (approvalSeen.url !== url) approvalSeen = { url, approvals: null, unresolved: null };
+    const approvals = readApprovals();
+    const unresolved = readUnresolved();
+    if (approvals !== null) approvalSeen.approvals = approvals;
+    if (unresolved !== null) approvalSeen.unresolved = unresolved;
+    return approvalSeen;
+  }
+
+  function minApprovals() {
+    const value = parseInt((settings || feature.defaults).minApprovals, 10);
+    return Number.isFinite(value) && value >= 0 ? value : feature.defaults.minApprovals;
+  }
+
+  // MR апрувнут: апрувов не меньше порога и нет нерешённых тредов.
+  // blockers — что мешает так считать; пока данных нет на странице, MR апрувнутым не считается
+  function describeApproval(url) {
+    const seen = readApprovalState(url);
+    const need = minApprovals();
+    const blockers = [];
+    if (need > 0 && seen.approvals === null) blockers.push('апрувы не видны — откройте вкладку Overview');
+    else if (seen.approvals < need) blockers.push('апрувов ' + seen.approvals + ' из ' + need);
+    if (seen.unresolved === null) blockers.push('треды ещё не загрузились — откройте вкладку Overview');
+    else if (seen.unresolved) blockers.push('нерешённых тредов: ' + seen.unresolved);
+    return { approved: !blockers.length, approvals: seen.approvals, blockers };
+  }
+
+  // ---------- кнопка «Создать MR на stage» ----------
+
+  const HINT_STAGE_FORK = 'MR из форка — создайте MR на stage вручную';
+
+  // «X requested to merge <source> into <target>»: цель — второй .ref-container шапки (липкий дубль пропускаем)
+  function getTargetBranch() {
+    const explicit = firstText(['[data-testid="target-branch"]', '.js-target-branch']);
+    if (explicit) return explicit;
+    const refs = Array.from(document.querySelectorAll('.ref-container'))
+      .filter((el) => !el.closest('#js-merge-sticky-header'));
+    return textOf(refs[1]);
+  }
+
+  function stageBranchFor(url) {
+    const current = settings || feature.defaults;
+    return DevHelper.rules.resolve(current.stageRules, current.defaultStageBranch, url);
+  }
+
+  // https://gitlab.example.com/group/project/-/merge_requests/new?merge_request[source_branch]=…&merge_request[target_branch]=stage
+  function newMrUrl(mrUrl, source, target) {
+    const u = new URL(mrUrl);
+    const params = new URLSearchParams({
+      'merge_request[source_branch]': source,
+      'merge_request[target_branch]': target
+    });
+    return u.origin + '/' + projectPathOf(u.pathname) + '/-/merge_requests/new?' + params;
+  }
+
+  // hidden — кнопку не показываем: ветки в шапке не нашлись или MR и так нацелен в stage
+  function describeStage() {
+    const mrUrl = getMrUrl();
+    const target = stageBranchFor(mrUrl);
+    const source = getSourceBranch();
+    if (!target || !source || getTargetBranch() === target) return { hidden: true };
+
+    const label = 'Создать MR на ' + target;
+    // У MR из форка исходная ветка в шапке — «namespace/project:branch»; двоеточие в имени ветки git не допускает
+    if (source.includes(':')) return { label, hint: HINT_STAGE_FORK };
+
+    const blockers = [];
+    if (isDraftTitle(getMrTitle())) blockers.push('MR в статусе Draft');
+    if (hasConflicts()) blockers.push('есть конфликты с целевой веткой');
+    blockers.push(...describeApproval(mrUrl).blockers);
+    if (blockers.length) return { label, hint: 'Пока нельзя: ' + blockers.join(', ') };
+
+    return {
+      label,
+      url: newMrUrl(mrUrl, source, target),
+      hint: 'Открыть форму нового MR: ' + source + ' → ' + target
+    };
+  }
+
+  // Как у Jira: пишем только при изменении, иначе MutationObserver зациклил бы sync
+  function renderStageButton(link, info = describeStage()) {
+    const { url, hint, label } = info;
+    if (url) {
+      if (link.getAttribute('href') !== url) link.setAttribute('href', url);
+    } else if (link.hasAttribute('href')) {
+      link.removeAttribute('href');
+    }
+    const text = link.querySelector('.gl-button-text');
+    if (label && text.textContent !== label) text.textContent = label;
+    if (label && link.getAttribute('aria-label') !== label) link.setAttribute('aria-label', label);
+    link.classList.toggle('glmrh-disabled', !url);
+    link.setAttribute('aria-disabled', String(!url));
+    setTooltip(link, hint || '');
+  }
+
+  function buildStageButton(info) {
+    const link = document.createElement('a');
+    link.id = STAGE_BTN_ID;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.className = 'gl-button btn btn-md btn-default has-tooltip';
+    link.setAttribute('data-placement', 'bottom');
+    link.setAttribute('data-container', 'body');
+
+    const label = document.createElement('span');
+    label.className = 'gl-button-text';
+    link.append(buildIcon(ICON_MERGE_REQUEST), label);
+
+    renderStageButton(link, info);
+    return link;
+  }
+
   // ---------- предупреждение о конфликтах ----------
 
   // Кнопка «Resolve conflicts» ведёт на /-/merge_requests/<iid>/conflicts и есть только при конфликтах.
@@ -610,7 +815,12 @@
 
     refreshConflicts(getMrUrl());
     const conflicts = hasConflicts();
-    const inHeader = !!anchor && (showCopy || showJira || conflicts);
+
+    const stageInfo = stageOnThisMr() ? describeStage() : { hidden: true };
+    const showStage = !stageInfo.hidden;
+    if (!showStage) removeById(STAGE_BTN_ID);
+
+    const inHeader = !!anchor && (showCopy || showJira || showStage || conflicts);
 
     if (inHeader) {
       const actions = ensureActions(anchor);
@@ -630,6 +840,15 @@
           log('кнопка Jira вставлена в шапку MR');
         }
       }
+      if (showStage) {
+        const stage = document.getElementById(STAGE_BTN_ID) || buildStageButton(stageInfo);
+        // Последней в ряду, даже если Jira включили позже
+        if (actions.lastElementChild !== stage) {
+          actions.appendChild(stage);
+          log('кнопка «Создать MR на stage» вставлена в шапку MR');
+        }
+        renderStageButton(stage, stageInfo);
+      }
       renderConflictWarning(conflicts ? actions : null, btn);
     } else if (showCopy && !btn) {
       // Разметка GitLab не распознана — плавающая кнопка в правом нижнем углу (Jira без шапки не показываем)
@@ -645,14 +864,14 @@
     if (actions && !actions.children.length) actions.remove();
 
     if (btn) {
-      setDraft(btn, isDraftTitle(getMrTitle()));
+      setBlocked(btn, blockReason(getMrTitle(), getMrUrl()));
       setConflicts(btn, conflicts);
     }
     if (jira) renderJiraButton(jira);
   }
 
   function unmount() {
-    for (const id of [BTN_ID, JIRA_BTN_ID, CONFLICT_ID, ACTIONS_ID]) removeById(id);
+    for (const id of [BTN_ID, JIRA_BTN_ID, STAGE_BTN_ID, CONFLICT_ID, ACTIONS_ID]) removeById(id);
   }
 
   // ---------- список merge requests ----------
@@ -667,7 +886,7 @@
     btn.setAttribute('data-container', 'body');
     btn.appendChild(buildIcon(ICON_COPY));
     trackHover(btn);
-    setDraft(btn, isDraftTitle(title));
+    setBlocked(btn, blockReason(title));
     renderButton(btn);
     btn.addEventListener('click', (event) => {
       event.preventDefault();
@@ -700,7 +919,7 @@
       }
       if (existing) {
         // В строке бывает несколько ссылок на MR (например, счётчик комментариев) — статус берём по названию
-        if (existing._glmrhLink === link) setDraft(existing, isDraftTitle(link.textContent));
+        if (existing._glmrhLink === link) setBlocked(existing, blockReason(link.textContent));
         continue;
       }
 
@@ -728,6 +947,7 @@
   let listButtonsEnabled = feature.defaults.listButtons;
   let hotkeyEnabled = feature.defaults.hotkey;
   let jiraButtonEnabled = feature.defaults.jiraButton;
+  let stageButtonEnabled = feature.defaults.stageButton;
   let myUsernames = [];
   let scheduled = false;
 
@@ -740,12 +960,18 @@
     return enabled && isMrPage() && jiraButtonEnabled;
   }
 
+  // MR на stage создаёт и тот, кто мержит чужую MR, — фильтр «Только мои MR» не применяем
+  function stageOnThisMr() {
+    return enabled && isMrPage() && stageButtonEnabled;
+  }
+
   function applySettings(values) {
     settings = { ...(settings || feature.defaults), ...values };
     if ('enabled' in values) enabled = !!values.enabled;
     if ('hotkey' in values) hotkeyEnabled = !!values.hotkey;
     if ('listButtons' in values) listButtonsEnabled = !!values.listButtons;
     if ('jiraButton' in values) jiraButtonEnabled = !!values.jiraButton;
+    if ('stageButton' in values) stageButtonEnabled = !!values.stageButton;
     if ('myUsername' in values) {
       myUsernames = parseUsernames(values.myUsername);
       // Фильтр поменялся — перестраиваем кнопки списка с нуля
@@ -803,7 +1029,7 @@
   try {
     DevHelper.storage.onFeatureChanged(feature.id, (changes) => {
       applySettings(changes);
-      // Telegram, топики, Jira — меняют название и ссылки уже вставленных кнопок
+      // Telegram, топики, Jira, stage — меняют название и ссылки уже вставленных кнопок
       renderAllButtons();
       sync();
     });
