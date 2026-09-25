@@ -9,10 +9,37 @@ Chrome-расширение (Manifest V3) — набор небольших по
 
 ## Установка
 
+Из исходников:
+
 1. `chrome://extensions` → включить **Режим разработчика**.
 2. **Загрузить распакованное расширение** → выбрать папку с расширением (корень репозитория, где лежит `manifest.json`).
 3. Кликнуть по иконке расширения (или «Детали» → «Параметры расширения») — откроются настройки.
    Слева список фич, у каждой фичи свой раздел.
+4. В разделе фичи, в блоке **Сайты**, добавить адрес — например, `gitlab.com` или адрес своего GitLab.
+   Chrome спросит разрешение на доступ к сайту. Без добавленного сайта фича нигде не работает.
+
+### Доступ к сайтам
+
+Расширение не просит доступ ко всем сайтам при установке (`optional_host_permissions`).
+Доступ выдаётся по одному сайту из блока «Сайты» в разделе фичи: адрес можно ввести как угодно
+(`https://gitlab.example.com/group`, `gitlab.example.com:8443`) — берётся только хост, порт не учитывается.
+Background регистрирует content script фичи (`chrome.scripting.registerContentScripts`) только на тех её сайтах,
+к которым есть доступ, и перерегистрирует при изменении списка или разрешений — в том числе когда доступ
+отзывают в `chrome://extensions`. Такой сайт в настройках помечается «нет доступа» с кнопкой «Разрешить».
+Удаление сайта из списка отзывает доступ, если сайт не нужен другим фичам.
+
+После добавления сайта уже открытые вкладки нужно обновить. После установки, а также после обновления,
+если ни один сайт не добавлен, страница настроек открывается сама.
+
+После `git pull` — кнопка ↻ на карточке расширения в `chrome://extensions`.
+
+## Публикация в Chrome Web Store
+
+1. Поднять `version` в `manifest.json`.
+2. `./scripts/build.sh` — собирает `dist/dev-helper-<version>.zip` только из файлов расширения
+   и проверяет, что всё, на что ссылается манифест, на месте.
+3. Загрузить zip в Developer Dashboard. Тексты карточки, обоснования разрешений и ответы про данные —
+   в [`store/listing.md`](store/listing.md), политика конфиденциальности — [`PRIVACY.md`](PRIVACY.md).
 
 ## Фича: Merge requests
 
@@ -78,6 +105,9 @@ https://gitlab.example.com/group/project/-/merge_requests/123
 ### Настройки
 
 Раздел «Merge requests» на странице настроек. Переключатель «Включено» отключает фичу целиком.
+
+- **Сайты → Адреса GitLab** — gitlab.com и/или адреса self-hosted GitLab, см. [Доступ к сайтам](#доступ-к-сайтам).
+  Сохраняются сразу, без кнопки «Сохранить».
 
 - **Шаблон копируемого текста** — см. выше.
 - **Мой username в GitLab** — если указан, кнопка на странице MR, кнопки в списке и горячая клавиша
@@ -146,16 +176,18 @@ MR появляется иконка копирования — копирует
 
 ```
 manifest.json                  манифест MV3
-background.js                  перенос старых настроек, клик по иконке, пересылка команд во вкладку
+background.js                  регистрация content scripts на разрешённых сайтах, перенос старых настроек,
+                               клик по иконке, пересылка команд во вкладку
 common/
   core.js                      пространство имён DevHelper, реестр фич, лог
   storage.js                   настройки фичи в chrome.storage.sync (ключи с префиксом фичи)
+  sites.js                     адреса сайтов: нормализация, шаблоны доступа и страниц фичи
   clipboard.js                 запись text/plain + text/html в буфер
   telegram.js                  t.me → tg://, открытие Telegram
   rules.js                     правила «путь проекта → ссылка» (топики, Jira)
 features/
   merge-requests/
-    feature.js                 id, название, описание, настройки по умолчанию
+    feature.js                 id, название, описание, content script, настройки по умолчанию
     content.js                 кнопки на странице и в списках MR, шаблон, кнопка Jira
     content.css                стили кнопок
     options.html               фрагмент раздела настроек
@@ -163,10 +195,13 @@ features/
 options/
   options.html                 страница настроек: меню фич и разделы
   options.css
-  options.js                   сборка разделов, загрузка и сохранение
+  options.js                   сборка разделов, блок «Сайты», загрузка и сохранение
+scripts/build.sh               zip для Chrome Web Store → dist/
+store/listing.md               тексты и ответы для Developer Dashboard (в пакет не входит)
+PRIVACY.md                     политика конфиденциальности
 ```
 
-Сборки нет: файлы — обычные скрипты, общаются через глобальный `DevHelper`
+Бандлера нет: файлы — обычные скрипты, общаются через глобальный `DevHelper`
 (content scripts одного расширения делят общий изолированный мир).
 
 Настройки хранятся ключами вида `<id фичи>.<настройка>`, например `mergeRequests.rules`.
@@ -175,8 +210,11 @@ options/
 
 ## Как добавить фичу
 
-1. `features/<slug>/feature.js` — `DevHelper.registerFeature({ id, slug, title, description, defaults })`;
-   в `defaults` обязательно `enabled`.
+1. `features/<slug>/feature.js` — `DevHelper.registerFeature({ id, slug, title, description, content, defaults })`;
+   в `defaults` обязательно `enabled`. Если фича работает на страницах сайтов — `content`:
+   `paths` (пути страниц в формате match pattern, например `/*/-/merge_requests*`), `js` (сначала нужные
+   `common/*.js`, затем `feature.js` и `content.js`), `css`, подписи `sitesLabel` и `sitesPlaceholder`;
+   в `defaults` — `hosts: []`. Блок «Сайты» в настройках и регистрация скрипта появятся сами.
 2. `features/<slug>/options.html` — фрагмент раздела настроек. Поля с атрибутом
    `data-field="<настройка>"` (checkbox, input, textarea) загружаются и сохраняются сами.
 3. При необходимости `features/<slug>/options.js` — `registerFeature({ id, options: { init, load, collect } })`
@@ -184,11 +222,10 @@ options/
 4. `features/<slug>/content.js` — логика на странице; настройки через
    `DevHelper.storage.getFeature(id, defaults)` и `onFeatureChanged`, уважать `enabled`.
 5. Подключить:
-   - в `manifest.json` — отдельная запись `content_scripts` со своими `matches`:
-     сначала нужные `common/*.js`, затем `feature.js` и `content.js`;
    - в `options/options.html` — `feature.js` и `options.js` фичи;
-   - в `background.js` — `feature.js` в `importScripts` (нужен для переноса настроек и дефолтов).
+   - в `background.js` — `feature.js` в `importScripts` (нужен для регистрации content script,
+     переноса настроек и дефолтов).
 6. Горячие клавиши — в `manifest.json` → `commands`; background пересылает во вкладку
    `{ type: 'command', command }`, фича слушает свою команду.
 
-Работает и с gitlab.com, и с self-hosted GitLab — домен не зашит.
+Работает и с gitlab.com, и с self-hosted GitLab — домен не зашит, адреса задаются в блоке «Сайты».

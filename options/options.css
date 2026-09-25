@@ -174,6 +174,23 @@ input[type="text"], input[type="url"] {
 .row input.project { flex: 0 0 34%; }
 .row input.url { flex: 1; }
 
+.sites-list { margin-bottom: 4px; }
+.site {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 4px 10px;
+  margin-bottom: 8px;
+  border: 1px solid #dcdcde;
+  border-radius: 6px;
+}
+.site-host { flex: 1; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+.site-warning { color: #dd2b0e; font-size: 12px; font-weight: 500; }
+.site button.small { margin: 0; }
+.site button.remove { padding: 4px 10px; margin-right: 4px; }
+p.hint.sites-empty { margin: 0 0 12px; color: #9e5400; }
+.sites .row input { flex: 1; }
+
 button {
   padding: 7px 14px;
   border-radius: 6px;

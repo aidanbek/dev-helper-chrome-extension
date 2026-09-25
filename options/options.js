@@ -80,9 +80,153 @@
     };
     enabledInput.addEventListener('change', renderEnabled);
 
+    const section = { feature, panel, body, nav, enabledInput, renderEnabled, hosts: [] };
+    if (feature.content) buildSites(section);
     if (feature.options && feature.options.init) feature.options.init(body);
 
-    return { feature, panel, body, nav, enabledInput, renderEnabled };
+    return section;
+  }
+
+  // ---------- сайты фичи ----------
+  // Список сайтов сохраняется сразу, без кнопки «Сохранить»: он должен совпадать с выданными доступами.
+
+  const SITES_TEMPLATE =
+    '<legend>Сайты</legend>' +
+    '<p class="hint hint-top">Фича работает только на добавленных сайтах — Chrome спросит разрешение на доступ ' +
+    'к каждому. После добавления обновите уже открытые вкладки этого сайта.</p>' +
+    '<div class="sites-list"></div>' +
+    '<p class="hint sites-empty">Сайты не добавлены — фича нигде не работает.</p>' +
+    '<label></label>' +
+    '<div class="row"><input type="text" spellcheck="false">' +
+    '<button type="button">Добавить</button></div>';
+
+  function buildSites(section) {
+    const { feature, body } = section;
+    const fieldset = document.createElement('fieldset');
+    fieldset.className = 'sites';
+    fieldset.innerHTML = SITES_TEMPLATE;
+    body.prepend(fieldset);
+
+    const input = fieldset.querySelector('input');
+    const id = feature.slug + '-site';
+    input.id = id;
+    input.placeholder = feature.content.sitesPlaceholder || 'example.com';
+    const label = fieldset.querySelector('label');
+    label.htmlFor = id;
+    label.textContent = feature.content.sitesLabel || 'Адрес сайта';
+
+    section.sites = {
+      list: fieldset.querySelector('.sites-list'),
+      empty: fieldset.querySelector('.sites-empty')
+    };
+
+    const add = () => addHost(section, input);
+    fieldset.querySelector('.row button').addEventListener('click', add);
+    input.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') add();
+    });
+  }
+
+  async function renderSites(section) {
+    if (!section.sites) return;
+    const access = await Promise.all(section.hosts.map((host) => DevHelper.sites.hasAccess(host)));
+    const { list, empty } = section.sites;
+    list.textContent = '';
+
+    section.hosts.forEach((host, i) => {
+      const row = document.createElement('div');
+      row.className = 'site';
+
+      const name = document.createElement('span');
+      name.className = 'site-host';
+      name.textContent = host;
+      row.append(name);
+
+      if (!access[i]) {
+        const warning = document.createElement('span');
+        warning.className = 'site-warning';
+        warning.textContent = 'нет доступа';
+        const grant = document.createElement('button');
+        grant.type = 'button';
+        grant.className = 'secondary small';
+        grant.textContent = 'Разрешить';
+        grant.addEventListener('click', () => grantHost(host));
+        row.append(warning, grant);
+      }
+
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'remove';
+      remove.textContent = '✕';
+      remove.title = 'Убрать сайт и отозвать доступ';
+      remove.addEventListener('click', () => removeHost(section, host));
+      row.append(remove);
+
+      list.append(row);
+    });
+    empty.hidden = section.hosts.length > 0;
+  }
+
+  // permissions.request работает только из обработчика действия пользователя — вызываем его до любых await
+  function requestAccess(host) {
+    return chrome.permissions.request({ origins: [DevHelper.sites.originPattern(host)] });
+  }
+
+  async function grantHost(host) {
+    try {
+      if (!(await requestAccess(host))) setStatus('Доступ к ' + host + ' не выдан', true);
+      // Перерисовку сделает permissions.onAdded
+    } catch (e) {
+      setStatus('Не удалось запросить доступ: ' + e.message, true);
+    }
+  }
+
+  async function addHost(section, input) {
+    const host = DevHelper.sites.normalizeHost(input.value);
+    if (!host) {
+      setStatus('Не похоже на адрес сайта: ' + input.value.trim(), true);
+      return;
+    }
+    if (section.hosts.includes(host)) {
+      input.value = '';
+      return;
+    }
+
+    try {
+      const granted = await requestAccess(host);
+      if (!granted) {
+        setStatus('Доступ к ' + host + ' не выдан — сайт не добавлен', true);
+        return;
+      }
+      section.hosts = [...section.hosts, host];
+      await DevHelper.storage.setFeature(section.feature.id, { hosts: section.hosts });
+      input.value = '';
+      await renderSites(section);
+      setStatus('Сайт добавлен');
+    } catch (e) {
+      setStatus('Не удалось добавить сайт: ' + e.message, true);
+    }
+  }
+
+  async function removeHost(section, host) {
+    try {
+      section.hosts = section.hosts.filter((h) => h !== host);
+      await DevHelper.storage.setFeature(section.feature.id, { hosts: section.hosts });
+      await renderSites(section);
+      setStatus('Сайт убран');
+    } catch (e) {
+      setStatus('Не удалось убрать сайт: ' + e.message, true);
+      return;
+    }
+
+    // Доступ отзываем, только если сайт не нужен другим фичам. Скрипты уже сняты по списку сайтов,
+    // так что неудача (например, доступ выдан как обязательный) ни на что не влияет
+    if (sections.some((s) => s.hosts.includes(host))) return;
+    try {
+      await chrome.permissions.remove({ origins: [DevHelper.sites.originPattern(host)] });
+    } catch (e) {
+      DevHelper.log('не удалось отозвать доступ к', host + ':', e && e.message);
+    }
   }
 
   async function loadSection(section) {
@@ -91,6 +235,8 @@
     enabledInput.checked = !!values.enabled;
     renderEnabled();
     loadFields(body, values);
+    section.hosts = values.hosts || [];
+    await renderSites(section);
     if (feature.options && feature.options.load) feature.options.load(body, values);
   }
 
@@ -145,6 +291,11 @@
     showSection();
     window.addEventListener('hashchange', showSection);
     document.getElementById('save').addEventListener('click', save);
+
+    // Доступ могли выдать или отозвать в chrome://extensions
+    const rerender = () => sections.forEach(renderSites);
+    chrome.permissions.onAdded.addListener(rerender);
+    chrome.permissions.onRemoved.addListener(rerender);
   }
 
   init();

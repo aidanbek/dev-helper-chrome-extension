@@ -21,6 +21,8 @@
   //   title       — название в меню настроек
   //   description — пояснение под заголовком раздела
   //   defaults    — настройки по умолчанию (включая enabled)
+  //   content     — content script фичи: { paths, js, css, sitesLabel, sitesPlaceholder };
+  //                 регистрируется на хостах из настройки hosts (в defaults — hosts: [])
   //   legacyKeys  — ключи storage до разделения на фичи, переносятся под префикс
   //   options     — { init(root), load(root, values), collect(root) } для страницы настроек
   DevHelper.registerFeature = (definition) => {
