@@ -12,6 +12,7 @@
   const ROW_BTN_CLASS = 'glmrh-row-btn';
   const ACTIONS_ID = 'glmrh-actions';
   const CONFLICT_ID = 'glmrh-conflict-warning';
+  const STAGE_NOTICE_ID = 'glmrh-stage-notice';
 
   const MR_PATH_RE = /\/-\/merge_requests\/(\d+)/;
   const MR_LINK_RE = /\/-\/merge_requests\/\d+(?:[?#]|$)/;
@@ -610,7 +611,8 @@
     else if (seen.approvals < need) blockers.push('апрувов ' + seen.approvals + ' из ' + need);
     if (seen.unresolved === null) blockers.push('треды ещё не загрузились — откройте вкладку Overview');
     else if (seen.unresolved) blockers.push('нерешённых тредов: ' + seen.unresolved);
-    return { approved: !blockers.length, approvals: seen.approvals, blockers };
+    const known = !(need > 0 && seen.approvals === null) && seen.unresolved !== null;
+    return { approved: !blockers.length, known, approvals: seen.approvals, blockers };
   }
 
   // ---------- кнопка «Создать MR на stage» ----------
@@ -641,22 +643,29 @@
     return u.origin + '/' + projectPathOf(u.pathname) + '/-/merge_requests/new?' + params;
   }
 
-  // hidden — кнопку не показываем: ветки в шапке не нашлись или MR и так нацелен в stage
+  // url — можно создавать; иначе reason — что мешает.
+  // hidden — кнопку не показываем: ветки в шапке не нашлись или MR и так нацелен в stage.
+  // pending — апрувы или треды ещё не прочитаны со страницы, ответ может измениться
   function describeStage() {
     const mrUrl = getMrUrl();
     const target = stageBranchFor(mrUrl);
     const source = getSourceBranch();
-    if (!target || !source || getTargetBranch() === target) return { hidden: true };
+    if (!target || !source) return { hidden: true, reason: 'не удалось определить ветки MR' };
+    if (getTargetBranch() === target) return { hidden: true, reason: 'MR и так нацелен в ' + target };
 
     const label = 'Создать MR на ' + target;
     // У MR из форка исходная ветка в шапке — «namespace/project:branch»; двоеточие в имени ветки git не допускает
-    if (source.includes(':')) return { label, hint: HINT_STAGE_FORK };
+    if (source.includes(':')) return { label, hint: HINT_STAGE_FORK, reason: HINT_STAGE_FORK };
 
+    const approval = describeApproval(mrUrl);
     const blockers = [];
     if (isDraftTitle(getMrTitle())) blockers.push('MR в статусе Draft');
     if (hasConflicts()) blockers.push('есть конфликты с целевой веткой');
-    blockers.push(...describeApproval(mrUrl).blockers);
-    if (blockers.length) return { label, hint: 'Пока нельзя: ' + blockers.join(', ') };
+    blockers.push(...approval.blockers);
+    if (blockers.length) {
+      const reason = blockers.join(', ');
+      return { label, hint: 'Пока нельзя: ' + reason, reason, pending: !approval.known };
+    }
 
     return {
       label,
@@ -696,6 +705,91 @@
 
     renderStageButton(link, info);
     return link;
+  }
+
+  // ---------- «Залить на stage» из Jira ----------
+
+  // Jira открывает MR с меткой DevHelper.STAGE_HASH. Ждём, пока со страницы прочитаются апрувы и треды,
+  // и по условиям «Создать MR на stage» переходим в форму нового MR или пишем в шапке, что мешает
+  const STAGE_REQUEST_WAIT = 20 * 1000;
+  // Виджет MR дорисовывается частями: конфликты (merge checks) могут появиться чуть позже апрувов —
+  // переходим, только если условия выполнены и не поменялись за это время
+  const STAGE_REQUEST_SETTLE = 1500;
+  const STAGE_REQUEST_POLL = 500;
+
+  let stageRequest = null; // { url, since, readyAt, timer }
+  let stageNotice = null; // { url, text }
+
+  // Метку сразу убираем из адреса, чтобы обновление страницы не повторило переход
+  function takeStageRequest() {
+    if (!isMrPage() || location.hash !== DevHelper.STAGE_HASH) return;
+    stageRequest = { url: getMrUrl(), since: Date.now(), readyAt: 0, timer: 0 };
+    stageNotice = null;
+    history.replaceState(history.state, '', location.pathname + location.search);
+    log('MR открыт из Jira для заливки на stage');
+  }
+
+  // Повторная проверка по таймеру: к концу ожидания DOM может больше не меняться
+  function recheckStageRequest(request) {
+    if (request.timer) return;
+    request.timer = setTimeout(() => {
+      request.timer = 0;
+      sync();
+    }, STAGE_REQUEST_POLL);
+  }
+
+  function processStageRequest() {
+    const url = getMrUrl();
+    if (stageNotice && stageNotice.url !== url) stageNotice = null;
+    const request = stageRequest;
+    if (!request) return;
+    if (request.url !== url) {
+      stageRequest = null;
+      return;
+    }
+
+    const info = describeStage();
+    const now = Date.now();
+    if (info.url) {
+      if (!request.readyAt) request.readyAt = now;
+      if (now - request.readyAt >= STAGE_REQUEST_SETTLE) {
+        stageRequest = null;
+        log('открываю форму MR на stage');
+        location.assign(info.url);
+        return;
+      }
+      recheckStageRequest(request);
+      return;
+    }
+
+    request.readyAt = 0;
+    if (info.pending && now - request.since < STAGE_REQUEST_WAIT) {
+      recheckStageRequest(request);
+      return;
+    }
+    stageRequest = null;
+    stageNotice = { url, text: 'Залить на stage нельзя: ' + info.reason };
+    log(stageNotice.text);
+  }
+
+  // Причина — текстом прямо в ряду кнопок (не в тултипе): её ждут сразу после перехода из Jira
+  function renderStageNotice(actions) {
+    const existing = document.getElementById(STAGE_NOTICE_ID);
+    if (!actions || !stageNotice) {
+      if (existing) existing.remove();
+      return;
+    }
+    let notice = existing;
+    if (!notice) {
+      notice = document.createElement('span');
+      notice.id = STAGE_NOTICE_ID;
+      notice.className = 'glmrh-conflict-warning';
+      notice.setAttribute('role', 'alert');
+      notice.append(buildIcon(ICON_WARNING), document.createElement('span'));
+    }
+    const text = notice.lastElementChild;
+    if (text.textContent !== stageNotice.text) text.textContent = stageNotice.text;
+    if (actions.lastElementChild !== notice) actions.appendChild(notice);
   }
 
   // ---------- предупреждение о конфликтах ----------
@@ -820,7 +914,9 @@
     const showStage = !stageInfo.hidden;
     if (!showStage) removeById(STAGE_BTN_ID);
 
-    const inHeader = !!anchor && (showCopy || showJira || showStage || conflicts);
+    processStageRequest();
+
+    const inHeader = !!anchor && (showCopy || showJira || showStage || conflicts || !!stageNotice);
 
     if (inHeader) {
       const actions = ensureActions(anchor);
@@ -842,14 +938,17 @@
       }
       if (showStage) {
         const stage = document.getElementById(STAGE_BTN_ID) || buildStageButton(stageInfo);
-        // Последней в ряду, даже если Jira включили позже
-        if (actions.lastElementChild !== stage) {
+        // Последней в ряду (за ней — только уведомление о заливке), даже если Jira включили позже
+        const last = actions.lastElementChild;
+        const onPlace = last === stage || (last && last.id === STAGE_NOTICE_ID && last.previousElementSibling === stage);
+        if (!onPlace) {
           actions.appendChild(stage);
           log('кнопка «Создать MR на stage» вставлена в шапку MR');
         }
         renderStageButton(stage, stageInfo);
       }
       renderConflictWarning(conflicts ? actions : null, btn);
+      renderStageNotice(actions);
     } else if (showCopy && !btn) {
       // Разметка GitLab не распознана — плавающая кнопка в правом нижнем углу (Jira без шапки не показываем)
       btn = buildButton();
@@ -858,7 +957,10 @@
       log('шапка MR не найдена, кнопка вставлена плавающей');
     }
 
-    if (!inHeader) renderConflictWarning(null);
+    if (!inHeader) {
+      renderConflictWarning(null);
+      renderStageNotice(null);
+    }
 
     const actions = document.getElementById(ACTIONS_ID);
     if (actions && !actions.children.length) actions.remove();
@@ -871,7 +973,7 @@
   }
 
   function unmount() {
-    for (const id of [BTN_ID, JIRA_BTN_ID, STAGE_BTN_ID, CONFLICT_ID, ACTIONS_ID]) removeById(id);
+    for (const id of [BTN_ID, JIRA_BTN_ID, STAGE_BTN_ID, CONFLICT_ID, STAGE_NOTICE_ID, ACTIONS_ID]) removeById(id);
   }
 
   // ---------- список merge requests ----------
@@ -985,7 +1087,10 @@
     requestAnimationFrame(() => {
       scheduled = false;
       // Предупреждение о конфликтах — на любом MR, даже если обе кнопки скрыты
-      if (enabled && isMrPage()) mount();
+      if (enabled && isMrPage()) {
+        takeStageRequest();
+        mount();
+      }
       else unmount();
       if (enabled && listButtonsEnabled) mountListButtons();
       else unmountListButtons();

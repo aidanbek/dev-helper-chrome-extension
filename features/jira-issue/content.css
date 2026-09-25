@@ -1,0 +1,60 @@
+/* Блок «Залить на stage» под рядом со статусом задачи. Подсвечен, чтобы отличаться от кнопок Jira;
+   цвета — токены дизайн-системы Atlassian (с фолбэками), тёмная тема подхватывается сама */
+.dhj-stage-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: var(--ds-border-width, 1px) solid var(--ds-border-discovery, #8f7ee7);
+  border-left-width: 4px;
+  border-radius: var(--ds-border-radius-200, 8px);
+  background: var(--ds-background-discovery, #f3f0ff);
+}
+
+.dhj-stage-btn {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--ds-border-radius, 3px);
+  background: var(--ds-background-discovery-bold, #6e5dc6);
+  color: var(--ds-text-inverse, #fff) !important;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none !important;
+  cursor: pointer;
+}
+
+.dhj-stage-btn:hover {
+  background: var(--ds-background-discovery-bold-hovered, #5e4db2);
+}
+
+.dhj-stage-btn:active {
+  background: var(--ds-background-discovery-bold-pressed, #352c63);
+}
+
+/* Нет поля или ссылки — причина в строке рядом */
+.dhj-stage-btn.dhj-disabled {
+  background: var(--ds-background-disabled, #091e4208);
+  color: var(--ds-text-disabled, #091e424f) !important;
+  cursor: not-allowed;
+}
+
+.dhj-stage-note {
+  min-width: 0;
+  color: var(--ds-text-subtle, #44546f);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* Несколько MR в поле — ошибка, которую надо исправить в задаче */
+.dhj-stage-note.dhj-error {
+  color: var(--ds-text-danger, #ae2e24);
+  font-weight: 500;
+}

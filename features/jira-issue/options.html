@@ -1,0 +1,26 @@
+<!--
+  Секция настроек фичи «Задачи Jira». Встраивается в options/options.html.
+  Поля с data-field загружаются и сохраняются автоматически.
+-->
+<fieldset>
+  <legend>Залить на stage</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="jira-stageButton" data-field="stageButton">
+    <label for="jira-stageButton">Блок «Залить на stage» под статусом задачи</label>
+  </div>
+  <p class="hint">
+    Кнопка открывает в новой вкладке MR из поля задачи. На странице MR фича «Merge requests» ждёт, пока
+    прочитаются апрувы и треды, и по тем же условиям, что у кнопки «Создать MR на stage», открывает форму
+    нового MR на stage — или пишет в шапке MR, что мешает. Нужны включённая фича «Merge requests»
+    и адрес GitLab в её блоке «Сайты».
+  </p>
+  <label for="jira-stageStatus">Статус задачи</label>
+  <input type="text" id="jira-stageStatus" data-field="stageStatus" placeholder="Тестирование" spellcheck="false">
+  <p class="hint">Блок показывается только в этом статусе, без учёта регистра. Пусто — «Тестирование».</p>
+  <label for="jira-mrField">Поле со ссылкой на MR</label>
+  <input type="text" id="jira-mrField" data-field="mrField" placeholder="Merge Request" spellcheck="false">
+  <p class="hint">
+    Название поля, как в задаче. В поле должна быть ровно одна ссылка на MR: нет ссылки или их несколько —
+    кнопка неактивна, причина написана рядом с ней. Пусто — «Merge Request».
+  </p>
+</fieldset>

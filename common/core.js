@@ -10,6 +10,10 @@
 
   DevHelper.features = [];
 
+  // Метка в адресе MR: кнопка «Залить на stage» в Jira открывает MR с ней,
+  // а фича «Merge requests» на странице MR проверяет его и открывает форму MR на stage
+  DevHelper.STAGE_HASH = '#dev-helper-stage';
+
   DevHelper.log = (...args) => console.info(LOG_PREFIX, ...args);
 
   DevHelper.getFeature = (id) => DevHelper.features.find((feature) => feature.id === id) || null;

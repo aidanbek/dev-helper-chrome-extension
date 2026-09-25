@@ -24,6 +24,9 @@ Merge requests (GitLab, включая self-hosted):
 • Горячая клавиша Alt+Shift+C.
 • Кнопка «Открыть задачу в Jira» по ключу задачи из ветки или названия MR.
 • Кнопка «Создать MR на stage», когда MR готов: не Draft, без конфликтов, с апрувами и без нерешённых тредов.
+
+Задачи Jira:
+• Кнопка «Залить на stage» в задаче в статусе «Тестирование»: открывает MR из поля задачи и сразу форму MR на stage.
 • Кнопка неактивна, пока MR в статусе Draft; предупреждение о конфликтах слияния.
 • Фильтр «только мои MR».
 
@@ -42,6 +45,9 @@ Merge requests (GitLab, including self-hosted):
 • Alt+Shift+C hotkey.
 • "Open Jira issue" button using the issue key from the branch or MR title.
 • "Create MR to stage" button once the MR is ready: not a Draft, no conflicts, approved, no unresolved threads.
+
+Jira issues:
+• "Deploy to stage" button on issues in testing: opens the MR from the issue field and then the MR-to-stage form.
 • Button is disabled while the MR is a Draft; merge conflict warning.
 • "Only my MRs" filter.
 

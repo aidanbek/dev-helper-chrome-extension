@@ -4,7 +4,8 @@ importScripts(
   'common/core.js',
   'common/storage.js',
   'common/sites.js',
-  'features/merge-requests/feature.js'
+  'features/merge-requests/feature.js',
+  'features/jira-issue/feature.js'
 );
 
 const SCRIPT_PREFIX = 'feature-';
