@@ -6,7 +6,7 @@
   const DevHelper = (globalThis.DevHelper = globalThis.DevHelper || {});
   if (DevHelper.registerFeature) return;
 
-  const LOG_PREFIX = '[Dev Helper for GitLab]';
+  const LOG_PREFIX = '[Dev Helper]';
 
   DevHelper.features = [];
 

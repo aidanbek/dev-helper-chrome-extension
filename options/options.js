@@ -102,7 +102,7 @@
       section.panel.hidden = section !== active;
       section.nav.classList.toggle('active', section === active);
     }
-    document.title = active.feature.title + ' — Dev Helper for GitLab';
+    document.title = active.feature.title + ' — Dev Helper';
   }
 
   function setStatus(message, isError) {
