@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "CarCity Dev Helper",
+  "name": "Dev Helper for GitLab",
   "version": "1.0.0",
-  "description": "Помощник разработчика CarCity",
+  "description": "Помощник для merge requests в GitLab: копирование названия и ссылки, переход в топик Telegram и задачу Jira",
   "permissions": [
     "storage"
   ],
@@ -11,7 +11,7 @@
     "open_in_tab": true
   },
   "action": {
-    "default_title": "CarCity Dev Helper — настройки",
+    "default_title": "Dev Helper for GitLab — настройки",
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",

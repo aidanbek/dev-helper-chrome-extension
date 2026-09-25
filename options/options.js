@@ -102,7 +102,7 @@
       section.panel.hidden = section !== active;
       section.nav.classList.toggle('active', section === active);
     }
-    document.title = active.feature.title + ' — CarCity Dev Helper';
+    document.title = active.feature.title + ' — Dev Helper for GitLab';
   }
 
   function setStatus(message, isError) {

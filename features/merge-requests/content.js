@@ -96,7 +96,7 @@
 
   // ---------- автор MR ----------
 
-  // <a class="author-link" data-username="aidanbek" href="/aidanbek"> — username, а не отображаемое имя
+  // <a class="author-link" data-username="jdoe" href="/jdoe"> — username, а не отображаемое имя
   function usernameOf(link) {
     if (!link) return '';
     const fromData = link.getAttribute('data-username');
@@ -119,7 +119,7 @@
     ));
   }
 
-  // "@aidanbek, other" -> ['aidanbek', 'other']
+  // "@jdoe, other" -> ['jdoe', 'other']
   function parseUsernames(value) {
     return (value || '')
       .split(/[\s,;]+/)
@@ -142,7 +142,7 @@
     return DevHelper.rules.resolve(settings.rules, settings.defaultTopicUrl, mrUrl);
   }
 
-  // Ключ задачи Jira: CC-123. Только заглавные — как в Jira; «release-1» в ветке не примем за задачу
+  // Ключ задачи Jira: PROJ-123. Только заглавные — как в Jira; «release-1» в ветке не примем за задачу
   const JIRA_KEY_RE = /(?<![A-Za-z0-9])([A-Z][A-Z0-9_]+-[1-9]\d*)(?!\d)/;
 
   function findJiraKey(text) {
@@ -150,7 +150,7 @@
     return m ? m[1] : '';
   }
 
-  // https://jira.example.com, https://jira.example.com/browse/ -> https://jira.example.com/browse/CC-123
+  // https://jira.example.com, https://jira.example.com/browse/ -> https://jira.example.com/browse/PROJ-123
   function jiraIssueUrl(base, key) {
     return base.replace(/\/+$/, '').replace(/\/browse$/i, '') + '/browse/' + key;
   }
@@ -442,7 +442,7 @@
   // ---------- кнопка «Открыть задачу в Jira» ----------
 
   const LABEL_JIRA = 'Открыть задачу в Jira';
-  const HINT_JIRA_NO_KEY = 'Ключ задачи Jira (например CC-123) не найден ни в ветке, ни в названии MR';
+  const HINT_JIRA_NO_KEY = 'Ключ задачи Jira (например PROJ-123) не найден ни в ветке, ни в названии MR';
   const HINT_JIRA_NO_URL = 'Jira для этого проекта не настроена — укажите URL в настройках расширения';
 
   // Ключ ищем сначала в исходной ветке, затем в названии MR
