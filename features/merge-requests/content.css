@@ -39,6 +39,25 @@
   cursor: not-allowed;
 }
 
+/* «Есть конфликты» в ряду кнопок шапки MR */
+.glmrh-conflict-warning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: .875rem;
+  line-height: 1.5;
+  color: var(--gl-feedback-warning-text-color, #8f4700);
+  background: var(--gl-feedback-warning-background-color, #fff4e1);
+  cursor: default;
+}
+
+.glmrh-conflict-warning .gl-icon {
+  color: var(--gl-feedback-warning-icon-color, #ab6100);
+  margin: 0;
+}
+
 /* Фолбэк, если шапка MR не найдена */
 .glmrh-page-btn.glmrh-floating {
   position: fixed;

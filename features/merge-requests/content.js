@@ -10,6 +10,7 @@
   const JIRA_BTN_ID = 'glmrh-jira-btn';
   const ROW_BTN_CLASS = 'glmrh-row-btn';
   const ACTIONS_ID = 'glmrh-actions';
+  const CONFLICT_ID = 'glmrh-conflict-warning';
 
   const MR_PATH_RE = /\/-\/merge_requests\/(\d+)/;
   const MR_LINK_RE = /\/-\/merge_requests\/\d+(?:[?#]|$)/;
@@ -212,6 +213,7 @@
   const SVG_NS = 'http://www.w3.org/2000/svg';
   const ICON_COPY = 'copy-to-clipboard';
   const ICON_EXTERNAL = 'external-link';
+  const ICON_WARNING = 'warning-solid';
 
   // Фолбэк, если спрайт иконок GitLab на странице не нашёлся
   const FALLBACK_ICON_PATHS = {
@@ -219,6 +221,9 @@
       'M5 2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V2Zm2-.5h6a.5.5 0 0 1 .5.5v8' +
       'a.5.5 0 0 1-.5.5H7a.5.5 0 0 1-.5-.5V2a.5.5 0 0 1 .5-.5ZM3.5 4H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h6' +
       'a2 2 0 0 0 2-2v-.5H9.5v.5a.5.5 0 0 1-.5.5H3a.5.5 0 0 1-.5-.5V6a.5.5 0 0 1 .5-.5h.5V4Z',
+    [ICON_WARNING]:
+      'M7.13 1.5a1 1 0 0 1 1.74 0l6.5 11.5a1 1 0 0 1-.87 1.5h-13a1 1 0 0 1-.87-1.5l6.5-11.5Z' +
+      'M7.25 5.5h1.5V10h-1.5V5.5Zm0 5.75h1.5v1.5h-1.5v-1.5Z',
     [ICON_EXTERNAL]:
       'M9 1.75A.75.75 0 0 1 9.75 1h4.5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0V3.56L8.53 8.53a.75.75 ' +
       '0 0 1-1.06-1.06l4.97-4.97H9.75A.75.75 0 0 1 9 1.75ZM3.5 3A1.5 1.5 0 0 0 2 4.5v8A1.5 1.5 0 0 0 3.5 14h8' +
@@ -279,6 +284,8 @@
   const LABEL_COPY = 'Скопировать ссылку на MR';
   const HINT_COPY = 'Скопировать название и ссылку MR';
   const HINT_DRAFT = 'MR в статусе Draft — снимите его, чтобы отправить на ревью';
+  const HINT_CONFLICTS = 'В MR конфликты с целевой веткой — разрешите их перед отправкой на ревью';
+  const HINT_CONFLICTS_OTHER = 'В MR конфликты с целевой веткой — автору нужно разрешить их перед мержем';
 
   // Название зависит от того, что сделает клик: настройка «открывать Telegram»,
   // найден ли топик для проекта этой MR и зажат ли Shift (он инвертирует настройку)
@@ -317,7 +324,7 @@
     const text = btn.querySelector('.gl-button-text');
     if (text) text.textContent = label;
     btn.setAttribute('aria-label', label);
-    setTooltip(btn, btn.disabled ? HINT_DRAFT : hint);
+    setTooltip(btn, btn.disabled ? HINT_DRAFT : btn._glmrhConflicts ? HINT_CONFLICTS + '. ' + hint : hint);
   }
 
   // Draft-MR на ревью не отправляем: кнопка неактивна, пока статус не снимут
@@ -486,6 +493,83 @@
     return link;
   }
 
+  // ---------- предупреждение о конфликтах ----------
+
+  // Кнопка «Resolve conflicts» ведёт на /-/merge_requests/<iid>/conflicts и есть только при конфликтах.
+  // Сам виджет GitLab опрашивает сервер, поэтому по DOM конфликт виден сразу и пропадает сразу.
+  function domHasConflicts() {
+    return !!document.querySelector('a[href*="/-/merge_requests/"][href$="/conflicts"]');
+  }
+
+  // Кнопки «Resolve conflicts» нет без прав на push и при свёрнутом списке проверок —
+  // тогда спрашиваем widget.json (его же опрашивает виджет MR), не чаще раза в минуту
+  const CONFLICTS_TTL = 60 * 1000;
+  let conflictsState = { url: '', value: null, at: 0, pending: false };
+
+  function refreshConflicts(url) {
+    const state = conflictsState;
+    if (state.url === url && (state.pending || Date.now() - state.at < CONFLICTS_TTL)) return;
+
+    const next = { url, value: state.url === url ? state.value : null, at: Date.now(), pending: true };
+    conflictsState = next;
+    fetch(url + '/widget.json', { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+      .then((response) => (response.ok ? response.json() : null))
+      .catch(() => null)
+      .then((data) => {
+        if (conflictsState !== next) return;
+        next.pending = false;
+        next.at = Date.now();
+        if (data && typeof data.has_conflicts === 'boolean') next.value = data.has_conflicts;
+        sync();
+      });
+  }
+
+  function hasConflicts() {
+    if (!isMrPage()) return false;
+    if (domHasConflicts()) return true;
+    return conflictsState.url === getMrUrl() && conflictsState.value === true;
+  }
+
+  function buildConflictWarning() {
+    const warning = document.createElement('span');
+    warning.id = CONFLICT_ID;
+    warning.className = 'glmrh-conflict-warning has-tooltip';
+    warning.setAttribute('role', 'status');
+    warning.setAttribute('data-placement', 'bottom');
+    warning.setAttribute('data-container', 'body');
+
+    const label = document.createElement('span');
+    label.textContent = 'Есть конфликты';
+    warning.append(buildIcon(ICON_WARNING), label);
+    return warning;
+  }
+
+  // Перерисовываем только при смене состояния: правка текста кнопки снова дёрнула бы MutationObserver
+  function setConflicts(btn, value) {
+    if (!!btn._glmrhConflicts === value) return;
+    btn._glmrhConflicts = value;
+    renderButton(btn);
+  }
+
+  // Предупреждение в ряду кнопок, только пока конфликты есть: сразу после «Отправить на ревью»,
+  // а если её нет (чужой MR) — первым в ряду
+  function renderConflictWarning(actions, btn) {
+    const existing = document.getElementById(CONFLICT_ID);
+    if (!actions) {
+      if (existing) existing.remove();
+      return;
+    }
+    const warning = existing || buildConflictWarning();
+    // Своя MR — есть кнопка отправки на ревью; на чужой советовать «отправить на ревью» незачем
+    const own = !!btn && btn.parentElement === actions;
+    setTooltip(warning, own ? HINT_CONFLICTS : HINT_CONFLICTS_OTHER);
+    if (own) {
+      if (warning.previousElementSibling !== btn) btn.insertAdjacentElement('afterend', warning);
+    } else if (actions.firstElementChild !== warning) {
+      actions.prepend(warning);
+    }
+  }
+
   // Ряд кнопок встаёт между строкой «X requested to merge … into …» и вкладками MR.
   // Липкий дубль шапки (#js-merge-sticky-header) пропускаем.
   function findHeaderAnchor() {
@@ -524,7 +608,11 @@
     let jira = document.getElementById(JIRA_BTN_ID);
     const anchor = findHeaderAnchor();
 
-    if (anchor && (showCopy || showJira)) {
+    refreshConflicts(getMrUrl());
+    const conflicts = hasConflicts();
+    const inHeader = !!anchor && (showCopy || showJira || conflicts);
+
+    if (inHeader) {
       const actions = ensureActions(anchor);
 
       if (showCopy) {
@@ -542,6 +630,7 @@
           log('кнопка Jira вставлена в шапку MR');
         }
       }
+      renderConflictWarning(conflicts ? actions : null, btn);
     } else if (showCopy && !btn) {
       // Разметка GitLab не распознана — плавающая кнопка в правом нижнем углу (Jira без шапки не показываем)
       btn = buildButton();
@@ -550,15 +639,20 @@
       log('шапка MR не найдена, кнопка вставлена плавающей');
     }
 
+    if (!inHeader) renderConflictWarning(null);
+
     const actions = document.getElementById(ACTIONS_ID);
     if (actions && !actions.children.length) actions.remove();
 
-    if (btn) setDraft(btn, isDraftTitle(getMrTitle()));
+    if (btn) {
+      setDraft(btn, isDraftTitle(getMrTitle()));
+      setConflicts(btn, conflicts);
+    }
     if (jira) renderJiraButton(jira);
   }
 
   function unmount() {
-    for (const id of [BTN_ID, JIRA_BTN_ID, ACTIONS_ID]) removeById(id);
+    for (const id of [BTN_ID, JIRA_BTN_ID, CONFLICT_ID, ACTIONS_ID]) removeById(id);
   }
 
   // ---------- список merge requests ----------
@@ -664,7 +758,8 @@
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
-      if (showOnThisMr() || jiraOnThisMr()) mount();
+      // Предупреждение о конфликтах — на любом MR, даже если обе кнопки скрыты
+      if (enabled && isMrPage()) mount();
       else unmount();
       if (enabled && listButtonsEnabled) mountListButtons();
       else unmountListButtons();
@@ -728,6 +823,12 @@
     };
   }
   window.addEventListener('popstate', () => setTimeout(sync, 50));
+  // Вернулись на вкладку — конфликты могли появиться или уйти, пока нас не было
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    conflictsState.at = 0;
+    sync();
+  });
 
   // GitLab дорисовывает содержимое асинхронно — несколько повторных попыток
   [0, 300, 1000, 2500].forEach((delay) => setTimeout(sync, delay));
