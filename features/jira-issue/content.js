@@ -77,12 +77,15 @@
     return Array.from(urls);
   }
 
+  // Выпадающий список редактора меток («Recent labels» и подсказки) рендерится внутри поля — это не метки задачи
+  const LABELS_MENU = '[role="listbox"], [role="option"], [role="menu"], [role="menuitem"], [id*="listbox"]';
+
   // Метки задачи: тексты листовых элементов поля без заголовка (чипы меток — ссылки с текстом метки)
   function labelsOf(anchor, fieldName) {
     const field = findField(anchor, normalize(fieldName));
     if (!field) return [];
     return Array.from(field.querySelectorAll('*'))
-      .filter((el) => !el.children.length && !el.closest(FIELD_HEADING))
+      .filter((el) => !el.children.length && !el.closest(FIELD_HEADING) && !el.closest(LABELS_MENU))
       .map((el) => normalize(el.textContent))
       .filter(Boolean);
   }
