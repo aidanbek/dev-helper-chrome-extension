@@ -27,6 +27,7 @@ Merge requests (GitLab, включая self-hosted):
 
 Задачи Jira:
 • Кнопка «Залить на stage» в задаче в статусе «Тестирование»: открывает MR из поля задачи и сразу форму MR на stage.
+• Кнопка «Pipeline ветки» в задаче с заданными метками: открывает последний pipeline ветки MR, чтобы запустить preview.
 • Кнопка неактивна, пока MR в статусе Draft; предупреждение о конфликтах слияния.
 • Фильтр «только мои MR».
 
@@ -48,6 +49,7 @@ Merge requests (GitLab, including self-hosted):
 
 Jira issues:
 • "Deploy to stage" button on issues in testing: opens the MR from the issue field and then the MR-to-stage form.
+• "Branch pipeline" button on issues with chosen labels: opens the latest pipeline of the MR branch to start a preview.
 • Button is disabled while the MR is a Draft; merge conflict warning.
 • "Only my MRs" filter.
 

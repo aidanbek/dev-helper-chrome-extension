@@ -12,7 +12,7 @@
   const ROW_BTN_CLASS = 'glmrh-row-btn';
   const ACTIONS_ID = 'glmrh-actions';
   const CONFLICT_ID = 'glmrh-conflict-warning';
-  const STAGE_NOTICE_ID = 'glmrh-stage-notice';
+  const REQUEST_NOTICE_ID = 'glmrh-request-notice';
 
   const MR_PATH_RE = /\/-\/merge_requests\/(\d+)/;
   const MR_LINK_RE = /\/-\/merge_requests\/\d+(?:[?#]|$)/;
@@ -718,13 +718,13 @@
   const STAGE_REQUEST_POLL = 500;
 
   let stageRequest = null; // { url, since, readyAt, timer }
-  let stageNotice = null; // { url, text }
+  let requestNotice = null; // { url, text }
 
   // Метку сразу убираем из адреса, чтобы обновление страницы не повторило переход
   function takeStageRequest() {
     if (!isMrPage() || location.hash !== DevHelper.STAGE_HASH) return;
     stageRequest = { url: getMrUrl(), since: Date.now(), readyAt: 0, timer: 0 };
-    stageNotice = null;
+    requestNotice = null;
     history.replaceState(history.state, '', location.pathname + location.search);
     log('MR открыт из Jira для заливки на stage');
   }
@@ -740,7 +740,7 @@
 
   function processStageRequest() {
     const url = getMrUrl();
-    if (stageNotice && stageNotice.url !== url) stageNotice = null;
+    if (requestNotice && requestNotice.url !== url) requestNotice = null;
     const request = stageRequest;
     if (!request) return;
     if (request.url !== url) {
@@ -768,28 +768,89 @@
       return;
     }
     stageRequest = null;
-    stageNotice = { url, text: 'Залить на stage нельзя: ' + info.reason };
-    log(stageNotice.text);
+    requestNotice = { url, text: 'Залить на stage нельзя: ' + info.reason };
+    log(requestNotice.text);
   }
 
   // Причина — текстом прямо в ряду кнопок (не в тултипе): её ждут сразу после перехода из Jira
-  function renderStageNotice(actions) {
-    const existing = document.getElementById(STAGE_NOTICE_ID);
-    if (!actions || !stageNotice) {
+  function renderRequestNotice(actions) {
+    const existing = document.getElementById(REQUEST_NOTICE_ID);
+    if (!actions || !requestNotice) {
       if (existing) existing.remove();
       return;
     }
     let notice = existing;
     if (!notice) {
       notice = document.createElement('span');
-      notice.id = STAGE_NOTICE_ID;
+      notice.id = REQUEST_NOTICE_ID;
       notice.className = 'glmrh-conflict-warning';
       notice.setAttribute('role', 'alert');
       notice.append(buildIcon(ICON_WARNING), document.createElement('span'));
     }
     const text = notice.lastElementChild;
-    if (text.textContent !== stageNotice.text) text.textContent = stageNotice.text;
+    if (text.textContent !== requestNotice.text) text.textContent = requestNotice.text;
     if (actions.lastElementChild !== notice) actions.appendChild(notice);
+  }
+
+  // ---------- «Pipeline ветки» из Jira ----------
+
+  // Jira открывает MR с меткой DevHelper.PIPELINE_HASH: в задаче есть только ссылка на MR, а ветку знает шапка MR.
+  // Ждём, пока она появится, и переходим на последний pipeline ветки — там запускают preview-окружение
+  const PIPELINE_REQUEST_WAIT = 10 * 1000;
+
+  let pipelineRequest = null; // { url, since, timer }
+
+  // Как у stage: метку сразу убираем, чтобы обновление страницы не повторило переход
+  function takePipelineRequest() {
+    if (!isMrPage() || location.hash !== DevHelper.PIPELINE_HASH) return;
+    pipelineRequest = { url: getMrUrl(), since: Date.now(), timer: 0 };
+    requestNotice = null;
+    history.replaceState(history.state, '', location.pathname + location.search);
+    log('MR открыт из Jira для перехода на pipeline ветки');
+  }
+
+  // https://gitlab.example.com/group/project/-/pipelines/feature/PROJ-1/latest — ветка со слешами без кодирования «/»
+  function latestPipelineUrl(mrUrl, branch) {
+    const u = new URL(mrUrl);
+    const ref = branch.split('/').map(encodeURIComponent).join('/');
+    return u.origin + '/' + projectPathOf(u.pathname) + '/-/pipelines/' + ref + '/latest';
+  }
+
+  function processPipelineRequest() {
+    const request = pipelineRequest;
+    if (!request) return;
+    const url = getMrUrl();
+    if (request.url !== url) {
+      pipelineRequest = null;
+      return;
+    }
+
+    const source = getSourceBranch();
+    let reason = '';
+    if (!source) {
+      if (Date.now() - request.since < PIPELINE_REQUEST_WAIT) {
+        if (!request.timer) {
+          request.timer = setTimeout(() => {
+            request.timer = 0;
+            sync();
+          }, STAGE_REQUEST_POLL);
+        }
+        return;
+      }
+      reason = 'не удалось определить исходную ветку MR';
+    } else if (source.includes(':')) {
+      // «namespace/project:branch» — pipeline ветки в форке, а не в этом проекте
+      reason = 'MR из форка — откройте pipeline ветки в форке';
+    }
+
+    pipelineRequest = null;
+    if (reason) {
+      requestNotice = { url, text: 'Открыть pipeline ветки нельзя: ' + reason };
+      log(requestNotice.text);
+      return;
+    }
+    log('открываю последний pipeline ветки', source);
+    location.replace(latestPipelineUrl(url, source));
   }
 
   // ---------- предупреждение о конфликтах ----------
@@ -915,8 +976,9 @@
     if (!showStage) removeById(STAGE_BTN_ID);
 
     processStageRequest();
+    processPipelineRequest();
 
-    const inHeader = !!anchor && (showCopy || showJira || showStage || conflicts || !!stageNotice);
+    const inHeader = !!anchor && (showCopy || showJira || showStage || conflicts || !!requestNotice);
 
     if (inHeader) {
       const actions = ensureActions(anchor);
@@ -940,7 +1002,7 @@
         const stage = document.getElementById(STAGE_BTN_ID) || buildStageButton(stageInfo);
         // Последней в ряду (за ней — только уведомление о заливке), даже если Jira включили позже
         const last = actions.lastElementChild;
-        const onPlace = last === stage || (last && last.id === STAGE_NOTICE_ID && last.previousElementSibling === stage);
+        const onPlace = last === stage || (last && last.id === REQUEST_NOTICE_ID && last.previousElementSibling === stage);
         if (!onPlace) {
           actions.appendChild(stage);
           log('кнопка «Создать MR на stage» вставлена в шапку MR');
@@ -948,7 +1010,7 @@
         renderStageButton(stage, stageInfo);
       }
       renderConflictWarning(conflicts ? actions : null, btn);
-      renderStageNotice(actions);
+      renderRequestNotice(actions);
     } else if (showCopy && !btn) {
       // Разметка GitLab не распознана — плавающая кнопка в правом нижнем углу (Jira без шапки не показываем)
       btn = buildButton();
@@ -959,7 +1021,7 @@
 
     if (!inHeader) {
       renderConflictWarning(null);
-      renderStageNotice(null);
+      renderRequestNotice(null);
     }
 
     const actions = document.getElementById(ACTIONS_ID);
@@ -973,7 +1035,7 @@
   }
 
   function unmount() {
-    for (const id of [BTN_ID, JIRA_BTN_ID, STAGE_BTN_ID, CONFLICT_ID, STAGE_NOTICE_ID, ACTIONS_ID]) removeById(id);
+    for (const id of [BTN_ID, JIRA_BTN_ID, STAGE_BTN_ID, CONFLICT_ID, REQUEST_NOTICE_ID, ACTIONS_ID]) removeById(id);
   }
 
   // ---------- список merge requests ----------
@@ -1089,6 +1151,7 @@
       // Предупреждение о конфликтах — на любом MR, даже если обе кнопки скрыты
       if (enabled && isMrPage()) {
         takeStageRequest();
+        takePipelineRequest();
         mount();
       }
       else unmount();

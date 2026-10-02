@@ -1,6 +1,6 @@
-/* Блок «Залить на stage» под рядом со статусом задачи. Подсвечен, чтобы отличаться от кнопок Jira;
+/* Блок кнопок «Залить на stage» и «Pipeline ветки» под рядом со статусом задачи. Подсвечен, чтобы отличаться от кнопок Jira;
    цвета — токены дизайн-системы Atlassian (с фолбэками), тёмная тема подхватывается сама */
-.dhj-stage-block {
+.dhj-block {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -15,7 +15,7 @@
   background: var(--ds-background-discovery, #f3f0ff);
 }
 
-.dhj-stage-btn {
+.dhj-btn {
   display: inline-flex;
   align-items: center;
   box-sizing: border-box;
@@ -31,22 +31,22 @@
   cursor: pointer;
 }
 
-.dhj-stage-btn:hover {
+.dhj-btn:hover {
   background: var(--ds-background-discovery-bold-hovered, #5e4db2);
 }
 
-.dhj-stage-btn:active {
+.dhj-btn:active {
   background: var(--ds-background-discovery-bold-pressed, #352c63);
 }
 
 /* Нет поля или ссылки — причина в строке рядом */
-.dhj-stage-btn.dhj-disabled {
+.dhj-btn.dhj-disabled {
   background: var(--ds-background-disabled, #091e4208);
   color: var(--ds-text-disabled, #091e424f) !important;
   cursor: not-allowed;
 }
 
-.dhj-stage-note {
+.dhj-note {
   min-width: 0;
   color: var(--ds-text-subtle, #44546f);
   font-size: 12px;
@@ -54,7 +54,7 @@
 }
 
 /* Несколько MR в поле — ошибка, которую надо исправить в задаче */
-.dhj-stage-note.dhj-error {
+.dhj-note.dhj-error {
   color: var(--ds-text-danger, #ae2e24);
   font-weight: 500;
 }

@@ -8,7 +8,9 @@
     title: 'Задачи Jira',
     description:
       'Кнопка «Залить на stage» в задаче Jira, пока задача в статусе «Тестирование»: открывает MR из поля задачи ' +
-      'в GitLab, а там фича «Merge requests» проверяет его и открывает форму MR на stage.',
+      'в GitLab, а там фича «Merge requests» проверяет его и открывает форму MR на stage. ' +
+      'Кнопка «Pipeline ветки» в задаче с одной из заданных меток: открывает последний pipeline исходной ветки MR, ' +
+      'чтобы запустить preview-окружение.',
     // Content script регистрирует background на хостах из настройки hosts, к которым выдан доступ.
     // Задача открывается и отдельной страницей (/browse/KEY), и модальным окном на досках, в бэклоге и поиске
     content: {
@@ -28,7 +30,10 @@
       hosts: [],
       stageButton: true,
       stageStatus: 'Тестирование',
-      mrField: 'Merge Request'
+      mrField: 'Merge Request',
+      pipelineButton: true,
+      pipelineLabels: '',
+      labelsField: 'Labels'
     }
   });
 })();

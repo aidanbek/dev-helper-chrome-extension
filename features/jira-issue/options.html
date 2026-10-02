@@ -24,3 +24,24 @@
     кнопка неактивна, причина написана рядом с ней. Пусто — «Merge Request».
   </p>
 </fieldset>
+<fieldset>
+  <legend>Pipeline ветки</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="jira-pipelineButton" data-field="pipelineButton">
+    <label for="jira-pipelineButton">Кнопка «Pipeline ветки» в задачах с метками</label>
+  </div>
+  <p class="hint">
+    Кнопка в том же блоке под статусом, в любом статусе задачи. Открывает в новой вкладке MR из поля задачи,
+    а фича «Merge requests» берёт его исходную ветку и переходит на её последний pipeline — там запускают
+    preview-окружение. Нужны включённая фича «Merge requests» и адрес GitLab в её блоке «Сайты».
+  </p>
+  <label for="jira-pipelineLabels">Метки задачи</label>
+  <input type="text" id="jira-pipelineLabels" data-field="pipelineLabels" placeholder="preview, needs-preview" spellcheck="false">
+  <p class="hint">
+    Через запятую или пробел, без учёта регистра. Кнопка появляется, если у задачи есть хотя бы одна из меток.
+    Пусто — кнопки нет.
+  </p>
+  <label for="jira-labelsField">Поле с метками</label>
+  <input type="text" id="jira-labelsField" data-field="labelsField" placeholder="Labels" spellcheck="false">
+  <p class="hint">Название поля, как в задаче. Пусто — «Labels».</p>
+</fieldset>

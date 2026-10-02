@@ -13,6 +13,9 @@
   // Метка в адресе MR: кнопка «Залить на stage» в Jira открывает MR с ней,
   // а фича «Merge requests» на странице MR проверяет его и открывает форму MR на stage
   DevHelper.STAGE_HASH = '#dev-helper-stage';
+  // Метка в адресе MR: кнопка «Pipeline ветки» в Jira открывает MR с ней,
+  // а фича «Merge requests» берёт исходную ветку MR и переходит на её последний pipeline
+  DevHelper.PIPELINE_HASH = '#dev-helper-pipeline';
 
   DevHelper.log = (...args) => console.info(LOG_PREFIX, ...args);
 

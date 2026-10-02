@@ -1,4 +1,4 @@
-// Фича «Задачи Jira»: блок «Залить на stage» под рядом кнопок со статусом задачи.
+// Фича «Задачи Jira»: блок под рядом кнопок со статусом задачи — «Залить на stage» и «Pipeline ветки».
 (() => {
   'use strict';
 
@@ -6,9 +6,25 @@
   const feature = DevHelper.getFeature('jiraIssue');
   const log = DevHelper.log;
 
-  const BLOCK_CLASS = 'dhj-stage-block';
-  const BTN_CLASS = 'dhj-stage-btn';
-  const LABEL = 'Залить на stage';
+  const BLOCK_CLASS = 'dhj-block';
+  const BTN_CLASS = 'dhj-btn';
+  const NOTE_CLASS = 'dhj-note';
+
+  // Кнопки блока в порядке показа. Обе открывают MR из поля задачи с меткой, дальше — фича «Merge requests»
+  const BUTTONS = [
+    {
+      kind: 'stage',
+      label: 'Залить на stage',
+      hash: DevHelper.STAGE_HASH,
+      hint: 'Открыть MR в GitLab: если он апрувнут, без конфликтов и не Draft — откроется форма MR на stage'
+    },
+    {
+      kind: 'pipeline',
+      label: 'Pipeline ветки',
+      hash: DevHelper.PIPELINE_HASH,
+      hint: 'Открыть последний pipeline исходной ветки MR в GitLab — запустить preview-окружение'
+    }
+  ];
 
   // Разметка Jira Cloud: кнопка статуса и заголовки полей в правой колонке задачи
   const STATUS_ANCHOR = '[data-testid="ref-spotlight-target-status-spotlight"]';
@@ -61,13 +77,43 @@
     return Array.from(urls);
   }
 
-  // «group/sub/project!12» — какой MR будет залит
+  // Метки задачи: тексты листовых элементов поля без заголовка (чипы меток — ссылки с текстом метки)
+  function labelsOf(anchor, fieldName) {
+    const field = findField(anchor, normalize(fieldName));
+    if (!field) return [];
+    return Array.from(field.querySelectorAll('*'))
+      .filter((el) => !el.children.length && !el.closest(FIELD_HEADING))
+      .map((el) => normalize(el.textContent))
+      .filter(Boolean);
+  }
+
+  // Метки Jira без пробелов — разделяем и запятыми, и пробелами
+  function parseLabels(value) {
+    return (value || '').split(/[\s,]+/).map(normalize).filter(Boolean);
+  }
+
+  // Какие кнопки нужны в задаче: stage — по статусу, pipeline — по меткам
+  function kindsFor(anchor) {
+    const current = settings || feature.defaults;
+    const kinds = [];
+    if (current.stageButton && statusOf(anchor) === normalize(current.stageStatus || feature.defaults.stageStatus)) {
+      kinds.push('stage');
+    }
+    const wanted = current.pipelineButton ? parseLabels(current.pipelineLabels) : [];
+    if (wanted.length) {
+      const labels = labelsOf(anchor, current.labelsField || feature.defaults.labelsField);
+      if (labels.some((label) => wanted.includes(label))) kinds.push('pipeline');
+    }
+    return kinds;
+  }
+
+  // «group/sub/project!12» — какой MR будет открыт
   function mrRef(url) {
     const m = url.match(/^https?:\/\/[^/]+\/(.+?)\/-\/merge_requests\/(\d+)/);
     return m ? m[1] + '!' + m[2] : url;
   }
 
-  // url — можно открывать; note — строка под кнопкой: какой MR или что мешает
+  // url — MR, который можно открывать; note — строка рядом с кнопками: какой MR или что мешает
   function describe(anchor) {
     const current = settings || feature.defaults;
     const fieldName = current.mrField || feature.defaults.mrField;
@@ -79,11 +125,7 @@
     if (urls.length > 1) {
       return { note: 'В поле «' + fieldName + '» несколько MR (' + urls.length + ') — оставьте одну ссылку', error: true };
     }
-    return {
-      url: urls[0] + DevHelper.STAGE_HASH,
-      note: 'MR ' + mrRef(urls[0]),
-      hint: 'Открыть MR в GitLab: если он апрувнут, без конфликтов и не Draft — откроется форма MR на stage'
-    };
+    return { url: urls[0], note: 'MR ' + mrRef(urls[0]) };
   }
 
   // Ряд кнопок со статусом (статус, Agents, …): ближайший предок — горизонтальный flex с несколькими детьми.
@@ -100,64 +142,81 @@
     return anchor;
   }
 
-  // Пишем только при изменении: иначе наш же MutationObserver зациклил бы sync
-  function render(block, info) {
-    const btn = block.querySelector('.' + BTN_CLASS);
-    if (info.url) {
-      if (btn.getAttribute('href') !== info.url) btn.setAttribute('href', info.url);
+  // Ссылка, а не кнопка: работают средний клик и «открыть в новой вкладке»
+  function buildButton(spec) {
+    const btn = document.createElement('a');
+    btn.className = BTN_CLASS;
+    btn.dataset.kind = spec.kind;
+    btn.target = '_blank';
+    btn.rel = 'noopener noreferrer';
+    btn.setAttribute('role', 'button');
+    btn.textContent = spec.label;
+    btn.addEventListener('click', (event) => {
+      if (!btn.hasAttribute('href')) event.preventDefault();
+    });
+    return btn;
+  }
+
+  function renderButton(btn, spec, info) {
+    const url = info.url ? info.url + spec.hash : '';
+    if (url) {
+      if (btn.getAttribute('href') !== url) btn.setAttribute('href', url);
     } else if (btn.hasAttribute('href')) {
       btn.removeAttribute('href');
     }
-    btn.classList.toggle('dhj-disabled', !info.url);
-    btn.setAttribute('aria-disabled', String(!info.url));
-    const hint = info.hint || info.note;
+    btn.classList.toggle('dhj-disabled', !url);
+    btn.setAttribute('aria-disabled', String(!url));
+    const hint = url ? spec.hint : info.note;
     if (btn.title !== hint) btn.title = hint;
+  }
 
-    const note = block.querySelector('.dhj-stage-note');
+  // Пишем только при изменении: иначе наш же MutationObserver зациклил бы sync.
+  // Кнопки добавляем и убираем по месту: метки и статус меняются без перерисовки задачи
+  function render(block, kinds, info) {
+    const note = block.querySelector('.' + NOTE_CLASS);
+    BUTTONS.forEach((spec) => {
+      let btn = block.querySelector('.' + BTN_CLASS + '[data-kind="' + spec.kind + '"]');
+      if (!kinds.includes(spec.kind)) {
+        if (btn) btn.remove();
+        return;
+      }
+      if (!btn) {
+        btn = buildButton(spec);
+        note.before(btn);
+      }
+      renderButton(btn, spec, info);
+    });
+
     if (note.textContent !== info.note) note.textContent = info.note;
     note.classList.toggle('dhj-error', !!info.error);
   }
 
-  // Ссылка, а не кнопка: работают средний клик и «открыть в новой вкладке»
   function build() {
     const block = document.createElement('div');
     block.className = BLOCK_CLASS;
-
-    const btn = document.createElement('a');
-    btn.className = BTN_CLASS;
-    btn.target = '_blank';
-    btn.rel = 'noopener noreferrer';
-    btn.setAttribute('role', 'button');
-    btn.textContent = LABEL;
-    btn.addEventListener('click', (event) => {
-      if (!btn.hasAttribute('href')) event.preventDefault();
-    });
-
     const note = document.createElement('span');
-    note.className = 'dhj-stage-note';
-
-    block.append(btn, note);
+    note.className = NOTE_CLASS;
+    block.append(note);
     return block;
   }
 
   function mount() {
-    const current = settings || feature.defaults;
-    const status = normalize(current.stageStatus || feature.defaults.stageStatus);
-    // Блоки, которым не нашлось статуса (сменили статус, закрыли задачу), в конце удаляем
+    // Блоки, которым не нашлось кнопок (сменили статус, сняли метку, закрыли задачу), в конце удаляем
     const stale = new Set(document.querySelectorAll('.' + BLOCK_CLASS));
 
     document.querySelectorAll(STATUS_ANCHOR).forEach((anchor) => {
-      if (statusOf(anchor) !== status) return;
+      const kinds = kindsFor(anchor);
+      if (!kinds.length) return;
       const place = statusRow(anchor);
       const next = place.nextElementSibling;
       let block = next && next.classList.contains(BLOCK_CLASS) ? next : null;
       if (!block) {
         block = build();
         place.insertAdjacentElement('afterend', block);
-        log('блок «Залить на stage» вставлен');
+        log('блок кнопок задачи вставлен');
       }
       stale.delete(block);
-      render(block, describe(anchor));
+      render(block, kinds, describe(anchor));
     });
 
     stale.forEach((block) => block.remove());
@@ -174,7 +233,7 @@
   let scheduled = false;
 
   function active() {
-    return !!settings && settings.enabled && settings.stageButton;
+    return !!settings && settings.enabled && (settings.stageButton || settings.pipelineButton);
   }
 
   function sync() {
