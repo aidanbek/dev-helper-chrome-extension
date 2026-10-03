@@ -10,6 +10,9 @@ Chrome-расширение (Manifest V3) — набор небольших по
 
 ## Установка
 
+Из Chrome Web Store: [Dev Helper](https://chromewebstore.google.com/detail/dev-helper/ajiokoleamdkgllgakjmomfcajjeipcn).
+После установки — шаги 3–4 ниже.
+
 Из исходников:
 
 1. `chrome://extensions` → включить **Режим разработчика**.
