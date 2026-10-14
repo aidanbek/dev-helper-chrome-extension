@@ -38,7 +38,9 @@ Merge requests (GitLab, включая self-hosted):
 Релизы Jira (Jira Cloud):
 • Фильтр по меткам над списком задач на странице релиза: чипы меток с числом задач,
   «без меток» и «без обязательных меток» — список обязательных меток настраивается.
-• Метки задач прямо в строках списка релиза — все, по алфавиту.
+• Shift+клик по метке скрывает задачи с ней; несколько меток — «любая» или «все».
+• Метки задач прямо в строках списка релиза — все, по алфавиту; клик по метке фильтрует список.
+• Копирование отфильтрованных задач («KEY — название») и ссылка на тот же отбор в поиске Jira.
 
 Переходы:
 • Переход с текущей страницы на связанную по вашим правилам: id, slug или окружение из адреса
@@ -76,7 +78,9 @@ Jira issues (Jira Cloud):
 Jira releases (Jira Cloud):
 • Labels filter above the work items list on a release page: label chips with issue counts,
   "no labels" and "no required labels" — the list of required labels is configurable.
-• Issue labels right in the release list rows — all of them, alphabetically.
+• Shift+click a label to hide issues with it; several labels match "any" or "all".
+• Issue labels right in the release list rows — all of them, alphabetically; click a label to filter.
+• Copy the filtered issues ("KEY — summary") and open the same selection in Jira search.
 
 Redirects:
 • Jump from the current page to a related one by your rules: the id, slug or environment from the URL
@@ -87,12 +91,28 @@ Redirects:
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
 
+### Что нового в 1.3.0 / What's new in 1.3.0
+
+Для описания версии и объявления. В Web Store нет поля changelog — при желании добавить в конец Description.
+
+RU:
+• Релизы Jira: фильтр по меткам над списком задач релиза — чипы меток с числом задач, «без меток»
+  и «без обязательных меток», исключение меток и режим «любая / все»; все метки задачи прямо в строках
+  списка; копирование отфильтрованных задач и ссылка на тот же отбор в поиске Jira.
+• Переходы: переход с текущей страницы на связанную по вашим правилам — из контекстного меню или по Alt+Shift+O.
+
+EN:
+• Jira releases: labels filter above a release's work items — label chips with issue counts, "no labels"
+  and "no required labels", excluding labels and "any / all" mode; all issue labels right in the list rows;
+  copying the filtered issues and opening the same selection in Jira search.
+• Redirects: jump from the current page to a related one by your rules — from the context menu or with Alt+Shift+O.
+
 ### Графика
 
 | Что | Размер | Статус |
 | --- | --- | --- |
 | Иконка | 128×128 PNG (берётся из пакета) | есть; по гайдлайнам — рисунок 96×96 с прозрачными полями 16 px |
-| Скриншоты | 1280×800 или 640×400, 1–5 шт., PNG без прозрачности или JPEG | в `store/screenshots/`: настройки «Задачи Jira» — есть; нужно снять: кнопка в шапке MR, иконки в списке MR, блок кнопок в задаче Jira |
+| Скриншоты | 1280×800 или 640×400, 1–5 шт., PNG без прозрачности или JPEG | в `store/screenshots/`: настройки «Задачи Jira» — есть; нужно снять: кнопка в шапке MR, иконки в списке MR, блок кнопок в задаче Jira, фильтр меток и метки в списке релиза, пункт «Переходов» в контекстном меню |
 | Small promo tile | 440×280 | необязательно |
 
 ## Privacy practices
@@ -101,16 +121,19 @@ No data is collected: settings stay in your browser, pages are processed locally
 
 RU: Ускорить рутинные действия разработчика на страницах рабочих инструментов — сейчас это отправка
 merge request в GitLab на ревью (с переходом в Telegram и Jira) и переходы из задачи Jira к её MR:
-заливка на stage и pipeline ветки, а также переход с текущей страницы на связанную (например, в админку).
+заливка на stage и pipeline ветки, фильтр задач релиза Jira по меткам, а также переход с текущей страницы
+на связанную (например, в админку).
 
 EN: Speed up routine developer actions on work tool pages — currently sending GitLab merge requests
 for review (with quick links to Telegram and Jira) and jumping from a Jira issue to its merge request:
-deploying to stage and opening the branch pipeline, plus jumping from the current page to a related one (e.g. its admin page).
+deploying to stage and opening the branch pipeline, filtering a Jira release's issues by labels, plus jumping
+from the current page to a related one (e.g. its admin page).
 
 ### Permission justification
 
 **storage** — EN: Stores the user's settings (text template, project → Telegram topic / Jira URL / stage branch rules,
-username filter, Jira status, labels and field names) and syncs them across the user's devices.
+username filter, Jira status, labels and field names, required release labels, "page → link" redirect rules)
+and syncs them across the user's devices.
 
 **scripting** — EN: Registers each feature's content script (`chrome.scripting.registerContentScripts`) only on sites
 the user has added in the settings and granted access to. No code is injected anywhere else.
