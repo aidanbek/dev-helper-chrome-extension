@@ -8,6 +8,7 @@
   const navEl = document.getElementById('nav');
   const panelsEl = document.getElementById('panels');
   const statusEl = document.getElementById('status');
+  const saveBar = document.querySelector('.savebar');
 
   const sections = [];
 
@@ -85,6 +86,48 @@
     if (feature.options && feature.options.init) feature.options.init(body);
 
     return section;
+  }
+
+  // Служебный раздел (не фича): свой пункт меню под фичами, без переключателя и кнопки «Сохранить»
+  function buildToolSection(page) {
+    const panel = document.createElement('section');
+    panel.className = 'panel';
+    panel.id = page.slug;
+    panel.hidden = true;
+
+    const header = document.createElement('header');
+    header.className = 'panel-header';
+    const text = document.createElement('div');
+    const title = document.createElement('h1');
+    title.textContent = page.title;
+    const description = document.createElement('p');
+    description.textContent = page.description || '';
+    text.append(title, description);
+    header.append(text);
+
+    const body = document.createElement('div');
+    body.className = 'panel-body';
+    panel.append(header, body);
+    panelsEl.appendChild(panel);
+
+    const caption = document.createElement('div');
+    caption.className = 'nav-caption';
+    caption.textContent = 'Сервис';
+    const nav = document.createElement('a');
+    nav.className = 'nav-item';
+    nav.href = '#' + page.slug;
+    nav.textContent = page.title;
+    navEl.after(caption, nav);
+
+    page.build(body, {
+      setStatus,
+      reload: () => Promise.all(featureSections().map(loadSection))
+    });
+    return { feature: { slug: page.slug, title: page.title }, panel, nav, tool: true, hosts: [] };
+  }
+
+  function featureSections() {
+    return sections.filter((section) => !section.tool);
   }
 
   // ---------- сайты фичи ----------
@@ -249,6 +292,7 @@
       section.nav.classList.toggle('active', section === active);
     }
     document.title = active.feature.title + ' — Dev Helper';
+    saveBar.hidden = !!active.tool;
   }
 
   function setStatus(message, isError) {
@@ -259,7 +303,7 @@
 
   async function save() {
     try {
-      for (const { feature, body, enabledInput } of sections) {
+      for (const { feature, body, enabledInput } of featureSections()) {
         const values = {
           ...collectFields(body, feature.defaults),
           ...(feature.options && feature.options.collect ? feature.options.collect(body) : {}),
@@ -286,7 +330,8 @@
     for (const feature of DevHelper.features) {
       sections.push(await buildSection(feature));
     }
-    await Promise.all(sections.map(loadSection));
+    if (DevHelper.backupPage) sections.push(buildToolSection(DevHelper.backupPage));
+    await Promise.all(featureSections().map(loadSection));
 
     showSection();
     window.addEventListener('hashchange', showSection);

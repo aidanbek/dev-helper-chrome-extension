@@ -48,6 +48,8 @@
       stageRules: [],
       minApprovals: 2
     },
+    // Свой username у каждого — в экспорт «для команды» не попадает
+    personal: ['myUsername'],
     legacyKeys: [
       'template',
       'boldTitle',

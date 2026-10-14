@@ -32,6 +32,11 @@
   //                 регистрируется на хостах из настройки hosts (в defaults — hosts: [])
   //   legacyKeys  — ключи storage до разделения на фичи, переносятся под префикс
   //   options     — { init(root), load(root, values), collect(root) } для страницы настроек
+  //   personal    — настройки, личные для пользователя (username): в экспорт «для команды» не попадают
+  //   exportExclude — настройки, которые не экспортируются никогда
+  //   settingsVersion — версия набора настроек для импорта (по умолчанию 1). Поднимается, когда настройку
+  //                 переименовали или поменяли её смысл; тогда же нужен migrate
+  //   migrate     — (settings, fromVersion) => settings: поднимает настройки из файла старой версии до текущей
   DevHelper.registerFeature = (definition) => {
     const existing = DevHelper.getFeature(definition.id);
     if (existing) return Object.assign(existing, definition);

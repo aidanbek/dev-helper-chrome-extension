@@ -53,6 +53,21 @@
     });
   }
 
+  // Настройки нескольких фич одним вызовом — либо записались все, либо ни одна: { idФичи: { имя: значение } }
+  function setFeatures(valuesById) {
+    const items = {};
+    for (const [featureId, values] of Object.entries(valuesById)) {
+      for (const [name, value] of Object.entries(values)) items[key(featureId, name)] = value;
+    }
+
+    return new Promise((resolve, reject) => {
+      chrome.storage.sync.set(items, () => {
+        if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+        else resolve();
+      });
+    });
+  }
+
   // callback получает { имя: новоеЗначение } только для настроек этой фичи
   function onFeatureChanged(featureId, callback) {
     const prefix = featureId + '.';
@@ -85,5 +100,5 @@
     }
   }
 
-  DevHelper.storage = { getFeature, setFeature, onFeatureChanged, migrateLegacy };
+  DevHelper.storage = { getFeature, setFeature, setFeatures, onFeatureChanged, migrateLegacy };
 })();
