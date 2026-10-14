@@ -60,6 +60,20 @@
   border-style: dashed;
 }
 
+/* Исключённая метка (Shift+клик) — задачи с ней скрыты */
+.dhr-chip.dhr-excluded {
+  border-color: var(--ds-border-danger, #e2483d);
+  background: var(--ds-background-danger, #ffeceb);
+  color: var(--ds-text-danger, #ae2e24);
+  text-decoration: line-through;
+}
+
+/* Переключатель «ИЛИ / И» — не метка */
+.dhr-chip.dhr-mode {
+  border-style: dotted;
+  color: var(--ds-text-subtle, #44546f);
+}
+
 .dhr-chip[data-reset] {
   border-style: dashed;
   color: var(--ds-text-subtle, #44546f);
@@ -104,4 +118,55 @@
 .dhr-row-label.dhr-required {
   color: var(--ds-text-subtle, #44546f);
   font-weight: 500;
+}
+
+/* Копирование и поиск — справа на панели */
+.dhr-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.dhr-action {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border: var(--ds-border-width, 1px) solid var(--ds-border, #091e4224);
+  border-radius: var(--ds-border-radius, 3px);
+  background: var(--ds-surface, #fff);
+  color: var(--ds-link, #0c66e4) !important;
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  text-decoration: none !important;
+  cursor: pointer;
+}
+
+.dhr-action:hover {
+  background: var(--ds-background-neutral-subtle-hovered, #091e420f);
+}
+
+.dhr-action:disabled {
+  color: var(--ds-text-disabled, #091e424f) !important;
+  cursor: not-allowed;
+}
+
+/* Метки в строке кликабельны: выбранная — в цвет выбранного чипа, исключённая — зачёркнута */
+.dhr-row-label {
+  cursor: pointer;
+}
+
+.dhr-row-label:hover {
+  color: var(--ds-text, #172b4d);
+}
+
+.dhr-row-label.dhr-selected {
+  background: var(--ds-background-discovery, #f3f0ff);
+  color: var(--ds-text-discovery, #5e4db2);
+}
+
+.dhr-row-label.dhr-excluded {
+  color: var(--ds-text-danger, #ae2e24);
+  text-decoration: line-through;
 }
