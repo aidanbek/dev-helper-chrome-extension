@@ -49,6 +49,8 @@ Merge requests (GitLab, включая self-hosted):
 • Пункты в контекстном меню страницы и ссылок на неё, горячая клавиша Alt+Shift+O.
 • Доступ к сайту не нужен — адрес страницы передаёт сам Chrome по вашему действию.
 
+Импорт и экспорт настроек — файлом или через буфер обмена: резервная копия или общие правила для команды.
+
 Работает только на сайтах, которые вы сами добавили в настройках: доступ запрашивается к каждому сайту отдельно.
 Никаких данных не собирается: настройки хранятся в вашем браузере, страницы обрабатываются локально.
 
@@ -90,6 +92,8 @@ Redirects:
 • Items in the context menu of the page and of links to it, plus the Alt+Shift+O hotkey.
 • No site access needed — Chrome passes the page URL itself on your action.
 
+Settings import and export — as a file or via the clipboard: a backup or shared rules for your team.
+
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
 
@@ -102,12 +106,14 @@ RU:
   и «без обязательных меток», исключение меток и режим «любая / все»; все метки задачи и ссылки на её MR
   прямо в строках списка; копирование отфильтрованных задач и ссылка на тот же отбор в поиске Jira.
 • Переходы: переход с текущей страницы на связанную по вашим правилам — из контекстного меню или по Alt+Shift+O.
+• Импорт и экспорт настроек: файлом или через буфер обмена, полная копия или «для команды».
 
 EN:
 • Jira releases: labels filter above a release's work items — label chips with issue counts, "no labels"
   and "no required labels", excluding labels and "any / all" mode; all issue labels and MR links right in the list rows;
   copying the filtered issues and opening the same selection in Jira search.
 • Redirects: jump from the current page to a related one by your rules — from the context menu or with Alt+Shift+O.
+• Settings import and export: as a file or via the clipboard, full copy or "for the team".
 
 ### Графика
 

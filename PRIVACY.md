@@ -9,6 +9,8 @@ Dev Helper не собирает, не хранит на внешних серв
 - **Настройки** (шаблоны, правила, ссылки, username) хранятся в `chrome.storage.sync`. Если в браузере
   включена синхронизация, Chrome синхронизирует их между вашими устройствами через ваш аккаунт Google.
   У разработчика расширения доступа к ним нет.
+- **Экспорт настроек.** По вашему действию расширение сохраняет настройки в файл на вашем компьютере
+  или копирует в буфер обмена; импорт читает выбранный вами файл или вставленный текст. Никуда не отправляется.
 - **Доступ к сайтам.** Расширение работает только на сайтах, которые вы сами добавили в настройках
   и к которым выдали доступ; доступ к остальным сайтам у него нет.
 - **Содержимое страниц.** На страницах merge request расширение читает название MR, ссылку, ветки, автора,
@@ -31,6 +33,8 @@ Dev Helper does not collect user data, does not store it on external servers, an
 
 - **Settings** (templates, rules, links, username) are stored in `chrome.storage.sync`. If browser sync is on,
   Chrome syncs them across your devices through your Google account. The developer has no access to them.
+- **Settings export.** On your action the extension saves the settings to a file on your computer or copies them
+  to the clipboard; import reads the file or text you provide. Nothing is sent anywhere.
 - **Site access.** The extension only runs on sites you added in the settings and granted access to;
   it has no access to any other site.
 - **Page content.** On merge request pages the extension reads the MR title, URL, branches, author, approvals
