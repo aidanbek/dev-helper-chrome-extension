@@ -35,6 +35,11 @@ Merge requests (GitLab, включая self-hosted):
   чтобы запустить preview-окружение.
 • Статус, метки и название поля с MR настраиваются.
 
+Релизы Jira (Jira Cloud):
+• Фильтр по меткам над списком задач на странице релиза: чипы меток с числом задач,
+  «без меток» и «без обязательных меток» — список обязательных меток настраивается.
+• Метки задач прямо в строках списка релиза — все, по алфавиту.
+
 Переходы:
 • Переход с текущей страницы на связанную по вашим правилам: id, slug или окружение из адреса
   подставляются в ссылку — например, с товара на сайте в админку или со stage на prod.
@@ -67,6 +72,11 @@ Jira issues (Jira Cloud):
 • "Branch pipeline" button on issues with chosen labels: opens the latest pipeline of the MR source branch
   to start a preview environment.
 • Status, labels and the MR field name are configurable.
+
+Jira releases (Jira Cloud):
+• Labels filter above the work items list on a release page: label chips with issue counts,
+  "no labels" and "no required labels" — the list of required labels is configurable.
+• Issue labels right in the release list rows — all of them, alphabetically.
 
 Redirects:
 • Jump from the current page to a related one by your rules: the id, slug or environment from the URL
@@ -117,8 +127,9 @@ so the list of sites can't be fixed in the manifest. The user adds their GitLab 
 (e.g. gitlab.com, example.atlassian.net) on the options page, and the extension requests access to that single
 site at that moment. On granted GitLab sites the content script runs only on merge request pages: it reads
 the MR title, URL, branches, author and approvals from the page and requests the MR's own `widget.json`
-from the same origin to detect merge conflicts. On granted Jira sites it runs only on issue pages: it reads
-the issue status, labels and the merge request link field to show its buttons. Removing a site revokes its access.
+from the same origin to detect merge conflicts. On granted Jira sites it runs only on issue and release pages: it reads
+the issue status, labels and the merge request link field to show its buttons, and on a release page requests
+the labels of the release's issues from the same Jira site to filter the work items list. Removing a site revokes its access.
 
 **Remote code** — No, all code is included in the package.
 

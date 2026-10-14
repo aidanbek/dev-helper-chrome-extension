@@ -1,0 +1,30 @@
+<!--
+  Секция настроек фичи «Релизы Jira». Встраивается в options/options.html.
+  Поля с data-field загружаются и сохраняются автоматически.
+-->
+<fieldset>
+  <legend>Фильтр по меткам</legend>
+  <p class="hint hint-top">
+    На странице релиза над списком Work items — чипы меток задач релиза с числом задач. Выбранные чипы оставляют
+    в списке задачи хотя бы с одной из выбранных меток. Метки берутся запросом к API Jira того же сайта
+    под вашей сессией: в строках списка их нет.
+  </p>
+  <label for="jira-release-requiredLabels">Обязательные метки</label>
+  <input type="text" id="jira-release-requiredLabels" data-field="requiredLabels" placeholder="back, front, mobile" spellcheck="false">
+  <p class="hint">
+    Через запятую или пробел, без учёта регистра. У каждой задачи релиза должна быть хотя бы одна из них:
+    чип «без обязательных меток» оставляет задачи, у которых нет ни одной. Обязательные метки в чипах выделены.
+    Пусто — чипа нет.
+  </p>
+</fieldset>
+<fieldset>
+  <legend>Метки в списке</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="jira-release-rowLabels" data-field="rowLabels">
+    <label for="jira-release-rowLabels">Показывать метки задач в строках списка</label>
+  </div>
+  <p class="hint">
+    Все метки задачи по алфавиту — сразу после названия, без сокращения: если места мало, сокращается название.
+    Обязательные метки выделены.
+  </p>
+</fieldset>

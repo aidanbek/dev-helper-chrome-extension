@@ -7,6 +7,7 @@ importScripts(
   'common/redirects.js',
   'features/merge-requests/feature.js',
   'features/jira-issue/feature.js',
+  'features/jira-release/feature.js',
   'features/redirects/feature.js'
 );
 

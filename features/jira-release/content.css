@@ -1,0 +1,107 @@
+/* Фильтр по меткам над списком задач релиза. Цвета — токены дизайн-системы Atlassian (с фолбэками),
+   тёмная тема подхватывается сама */
+.dhr-labels {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  box-sizing: border-box;
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: var(--ds-border-width, 1px) solid var(--ds-border-discovery, #8f7ee7);
+  border-left-width: 4px;
+  border-radius: var(--ds-border-radius-200, 8px);
+  background: var(--ds-background-discovery, #f3f0ff);
+}
+
+.dhr-labels-title {
+  color: var(--ds-text-subtle, #44546f);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dhr-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dhr-chip {
+  height: 24px;
+  padding: 0 8px;
+  border: var(--ds-border-width, 1px) solid var(--ds-border, #091e4224);
+  border-radius: var(--ds-border-radius, 3px);
+  background: var(--ds-surface, #fff);
+  color: var(--ds-text, #172b4d);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dhr-chip:hover {
+  background: var(--ds-background-neutral-subtle-hovered, #091e420f);
+}
+
+.dhr-chip.dhr-selected {
+  border-color: var(--ds-background-discovery-bold, #6e5dc6);
+  background: var(--ds-background-discovery-bold, #6e5dc6);
+  color: var(--ds-text-inverse, #fff);
+}
+
+/* Обязательная метка — рамка в цвет выбранного чипа */
+.dhr-chip.dhr-required:not(.dhr-selected) {
+  border-color: var(--ds-border-discovery, #8f7ee7);
+  font-weight: 600;
+}
+
+/* «без меток», «без обязательных меток» — служебные, отделены от меток */
+.dhr-chip.dhr-special:not(.dhr-selected) {
+  border-style: dashed;
+}
+
+.dhr-chip[data-reset] {
+  border-style: dashed;
+  color: var(--ds-text-subtle, #44546f);
+}
+
+.dhr-labels-status {
+  color: var(--ds-text-subtle, #44546f);
+  font-size: 12px;
+}
+
+.dhr-labels-status.dhr-error {
+  color: var(--ds-text-danger, #ae2e24);
+  font-weight: 500;
+}
+
+[data-dhr-hidden] {
+  display: none !important;
+}
+
+/* Метки задачи в строке списка: все и целиком — не сжимаются, при нехватке места сжимается название */
+.dhr-row-labels {
+  display: inline-flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  margin: 0 8px;
+  vertical-align: middle;
+}
+
+.dhr-row-label {
+  padding: 0 6px;
+  border-radius: var(--ds-border-radius, 3px);
+  background: var(--ds-background-neutral-subtle-hovered, #091e420f);
+  color: var(--ds-text-subtlest, #626f86);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+/* Обязательная метка — чуть заметнее остальных, но тише чипов фильтра */
+.dhr-row-label.dhr-required {
+  color: var(--ds-text-subtle, #44546f);
+  font-weight: 500;
+}
