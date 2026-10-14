@@ -1,0 +1,51 @@
+<!--
+  Секция настроек фичи «Переходы». Встраивается в options/options.html.
+  Поля с data-field загружаются и сохраняются автоматически, список правил и проверка ссылки — в options.js.
+-->
+<fieldset>
+  <legend>Правила</legend>
+  <p class="hint hint-top">
+    Название — текст пункта в контекстном меню (пусто — «Открыть &lt;хост ссылки&gt;»).
+    Страница — хост и путь страницы, ссылка — куда перейти.
+    В шаблоне страницы <code>{имя}</code> — сегмент пути (в хосте — часть до точки), <code>{имя:num}</code> — число,
+    <code>*</code> — любые символы внутри сегмента; параметры (<code>?…</code>) и <code>#…</code> не учитываются,
+    регистр не важен. В ссылке <code>{имя}</code> заменяется найденным значением.
+  </p>
+  <p class="hint hint-top">
+    Например, <code>{env}.example.com/product/*-{id:num}</code> →
+    <code>https://{env}-admin.example.com/products/{id}</code>: из
+    <code>stage.example.com/product/brake-pad-c7011lr-512644</code> получится
+    <code>https://stage-admin.example.com/products/512644</code>. Адрес без поддомена (<code>example.com</code>)
+    под <code>{env}.example.com</code> не подходит — для него нужно отдельное правило.
+    Если подходят несколько правил, в меню будет пункт на каждое; горячая клавиша открывает первое.
+  </p>
+  <div data-rules="redirects"></div>
+  <button type="button" class="secondary" data-add-rule>+ Добавить правило</button>
+</fieldset>
+
+<fieldset>
+  <legend>Проверка</legend>
+  <label for="redirects-check">Адрес страницы</label>
+  <input type="url" id="redirects-check" placeholder="https://stage.example.com/product/…-512644" spellcheck="false">
+  <div class="hint" data-check-result></div>
+</fieldset>
+
+<fieldset>
+  <legend>Запуск</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="redirects-contextMenu" data-field="contextMenu">
+    <label for="redirects-contextMenu">Пункты в контекстном меню</label>
+  </div>
+  <p class="hint">
+    На странице, подходящей под правило, и на ссылках на такие страницы — например, на карточках в каталоге.
+    Если пунктов несколько, Chrome собирает их в подменю «Dev Helper».
+  </p>
+  <div class="checkbox">
+    <input type="checkbox" id="redirects-hotkey" data-field="hotkey">
+    <label for="redirects-hotkey">Переход по <code>Alt+Shift+O</code> по первому подходящему правилу</label>
+  </div>
+  <p class="hint">
+    Комбинацию можно переназначить в <code>chrome://extensions/shortcuts</code>.
+    Страница открывается в новой вкладке рядом с текущей.
+  </p>
+</fieldset>

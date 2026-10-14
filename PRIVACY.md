@@ -1,6 +1,6 @@
 # Политика конфиденциальности / Privacy Policy — Dev Helper
 
-_Последнее обновление / Last updated: 2026-09-25_
+_Последнее обновление / Last updated: 2026-10-09_
 
 ## Русский
 
@@ -13,11 +13,13 @@ Dev Helper не собирает, не хранит на внешних серв
   и к которым выдали доступ; доступ к остальным сайтам у него нет.
 - **Содержимое страниц.** На страницах merge request расширение читает название MR, ссылку, ветки, автора,
   апрувы и треды, чтобы скопировать текст в буфер обмена и показать кнопки; в задачах Jira — статус задачи
-  и ссылку на MR из поля задачи. Эти данные обрабатываются только локально в браузере и никуда не отправляются.
+  и ссылку на MR из поля задачи. По пункту контекстного меню «Переходов» или их горячей клавише
+  расширение берёт адрес текущей страницы или ссылки, чтобы построить ссылку по вашим правилам.
+  Эти данные обрабатываются только локально в браузере и никуда не отправляются.
 - **Сетевые запросы.** Расширение запрашивает `widget.json` текущего merge request у того же сервера,
   с которого открыта страница, чтобы узнать о конфликтах слияния. Других запросов нет, аналитики и трекинга нет.
 - **Внешние ссылки.** По вашему действию расширение открывает указанные вами в настройках ссылки
-  (Telegram, Jira). Что происходит на этих сайтах, определяют их собственные политики.
+  (Telegram, Jira, ссылки «Переходов»). Что происходит на этих сайтах, определяют их собственные политики.
 
 Удалить все данные можно, удалив расширение.
 
@@ -31,10 +33,12 @@ Dev Helper does not collect user data, does not store it on external servers, an
   it has no access to any other site.
 - **Page content.** On merge request pages the extension reads the MR title, URL, branches, author, approvals
   and threads to copy text to the clipboard and show its buttons; in Jira issues it reads the issue status
-  and the MR link from an issue field. This data is processed locally in the browser only and is never sent anywhere.
+  and the MR link from an issue field. When you use a "Redirects" context menu item or its hotkey, it takes
+  the URL of the current page or link to build a link by your rules.
+  This data is processed locally in the browser only and is never sent anywhere.
 - **Network requests.** The extension requests the current merge request's `widget.json` from the same server
   the page was loaded from, to detect merge conflicts. No other requests are made; there is no analytics or tracking.
-- **External links.** On your action the extension opens links you configured in the settings (Telegram, Jira).
+- **External links.** On your action the extension opens links you configured in the settings (Telegram, Jira, "Redirects" links).
   Those sites are governed by their own policies.
 
 Removing the extension deletes all of its data.

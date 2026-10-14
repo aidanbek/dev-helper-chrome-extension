@@ -35,6 +35,12 @@ Merge requests (GitLab, включая self-hosted):
   чтобы запустить preview-окружение.
 • Статус, метки и название поля с MR настраиваются.
 
+Переходы:
+• Переход с текущей страницы на связанную по вашим правилам: id, slug или окружение из адреса
+  подставляются в ссылку — например, с товара на сайте в админку или со stage на prod.
+• Пункты в контекстном меню страницы и ссылок на неё, горячая клавиша Alt+Shift+O.
+• Доступ к сайту не нужен — адрес страницы передаёт сам Chrome по вашему действию.
+
 Работает только на сайтах, которые вы сами добавили в настройках: доступ запрашивается к каждому сайту отдельно.
 Никаких данных не собирается: настройки хранятся в вашем браузере, страницы обрабатываются локально.
 
@@ -62,6 +68,12 @@ Jira issues (Jira Cloud):
   to start a preview environment.
 • Status, labels and the MR field name are configurable.
 
+Redirects:
+• Jump from the current page to a related one by your rules: the id, slug or environment from the URL
+  goes into the link — e.g. from a product on the site to its admin page, or from stage to prod.
+• Items in the context menu of the page and of links to it, plus the Alt+Shift+O hotkey.
+• No site access needed — Chrome passes the page URL itself on your action.
+
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
 
@@ -79,11 +91,11 @@ No data is collected: settings stay in your browser, pages are processed locally
 
 RU: Ускорить рутинные действия разработчика на страницах рабочих инструментов — сейчас это отправка
 merge request в GitLab на ревью (с переходом в Telegram и Jira) и переходы из задачи Jira к её MR:
-заливка на stage и pipeline ветки.
+заливка на stage и pipeline ветки, а также переход с текущей страницы на связанную (например, в админку).
 
 EN: Speed up routine developer actions on work tool pages — currently sending GitLab merge requests
 for review (with quick links to Telegram and Jira) and jumping from a Jira issue to its merge request:
-deploying to stage and opening the branch pipeline.
+deploying to stage and opening the branch pipeline, plus jumping from the current page to a related one (e.g. its admin page).
 
 ### Permission justification
 
@@ -92,6 +104,12 @@ username filter, Jira status, labels and field names) and syncs them across the 
 
 **scripting** — EN: Registers each feature's content script (`chrome.scripting.registerContentScripts`) only on sites
 the user has added in the settings and granted access to. No code is injected anywhere else.
+
+**contextMenus** — EN: Adds an item per user-defined "page → link" rule to the context menu, shown only on pages
+and links that match the rule's URL pattern. Clicking it opens the resulting link in a new tab.
+
+**activeTab** — EN: When the user presses the "Redirects" hotkey, the extension reads the URL of the active tab
+to build the link from the user's rules. The page content is not read and nothing is injected.
 
 **Host permissions** (`optional_host_permissions: *://*/*`, nothing is granted at install) —
 EN: GitLab is often self-hosted on an arbitrary domain, and Jira Cloud lives on a per-company subdomain,

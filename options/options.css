@@ -165,6 +165,9 @@ input[type="text"], input[type="url"], input[type="number"] {
   font-size: 13px;
 }
 input[type="number"] { width: 100px; }
+input.invalid { border-color: #dd2b0e; }
+div[data-check-result] { color: #666; margin: 8px 0 0; word-break: break-all; }
+div[data-check-result].error { color: #dd2b0e; }
 
 .checkbox { display: flex; align-items: center; gap: 8px; font-weight: 500; }
 .checkbox + .checkbox { margin-top: 12px; }
@@ -172,6 +175,7 @@ input[type="number"] { width: 100px; }
 .checkbox label { margin: 0; }
 
 .row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 8px; }
+.row input.title { flex: 0 0 20%; }
 .row input.project { flex: 0 0 34%; }
 .row input.url { flex: 1; }
 

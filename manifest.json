@@ -5,7 +5,9 @@
   "description": "Набор небольших помощников для повседневной работы разработчика",
   "permissions": [
     "storage",
-    "scripting"
+    "scripting",
+    "contextMenus",
+    "activeTab"
   ],
   "optional_host_permissions": [
     "*://*/*"
@@ -36,6 +38,12 @@
         "default": "Alt+Shift+C"
       },
       "description": "Скопировать название и ссылку текущего MR"
+    },
+    "open-redirect": {
+      "suggested_key": {
+        "default": "Alt+Shift+O"
+      },
+      "description": "Перейти с текущей страницы по первому подходящему правилу «Переходов»"
     }
   }
 }
