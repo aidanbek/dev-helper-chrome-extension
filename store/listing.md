@@ -102,25 +102,31 @@ No data is collected: settings stay in your browser, pages are processed locally
 Для описания версии и объявления. В Web Store нет поля changelog — при желании добавить в конец Description.
 
 RU:
-• Релизы Jira: фильтр по меткам над списком задач релиза — чипы меток с числом задач, «без меток»
-  и «без обязательных меток», исключение меток и режим «любая / все»; все метки задачи и ссылки на её MR
-  прямо в строках списка; копирование отфильтрованных задач и ссылка на тот же отбор в поиске Jira.
-• Переходы: переход с текущей страницы на связанную по вашим правилам — из контекстного меню или по Alt+Shift+O.
-• Импорт и экспорт настроек: файлом или через буфер обмена, полная копия или «для команды».
+• Релизы Jira — новая фича на странице релиза: фильтр по меткам (чипы с числом задач, «без меток»,
+  «без обязательных меток», Shift+клик — скрыть, режим «любая / все»), метки задач в строках списка,
+  кнопка «Посмотреть MR» рядом со статусом, копирование отфильтрованных задач и ссылка на тот же отбор
+  в поиске Jira.
+• Переходы — новая фича: переход с текущей страницы на связанную по вашим правилам —
+  из контекстного меню или по Alt+Shift+O.
+• Импорт и экспорт настроек: файлом или через буфер обмена, полная копия или «для команды»,
+  с превью изменений перед импортом.
 
 EN:
-• Jira releases: labels filter above a release's work items — label chips with issue counts, "no labels"
-  and "no required labels", excluding labels and "any / all" mode; all issue labels and MR links right in the list rows;
-  copying the filtered issues and opening the same selection in Jira search.
-• Redirects: jump from the current page to a related one by your rules — from the context menu or with Alt+Shift+O.
-• Settings import and export: as a file or via the clipboard, full copy or "for the team".
+• Jira releases — a new feature on the release page: labels filter (chips with issue counts, "no labels",
+  "no required labels", Shift+click to hide, "any / all" mode), issue labels in the list rows,
+  a "View MR" button next to the status, copying the filtered issues and opening the same selection
+  in Jira search.
+• Redirects — a new feature: jump from the current page to a related one by your rules —
+  from the context menu or with Alt+Shift+O.
+• Settings import and export: as a file or via the clipboard, full copy or "for the team",
+  with a preview of the changes before import.
 
 ### Графика
 
 | Что | Размер | Статус |
 | --- | --- | --- |
 | Иконка | 128×128 PNG (берётся из пакета) | есть; по гайдлайнам — рисунок 96×96 с прозрачными полями 16 px |
-| Скриншоты | 1280×800 или 640×400, 1–5 шт., PNG без прозрачности или JPEG | в `store/screenshots/`: настройки «Задачи Jira» — есть; нужно снять: кнопка в шапке MR, иконки в списке MR, блок кнопок в задаче Jira, фильтр меток и метки в списке релиза, пункт «Переходов» в контекстном меню |
+| Скриншоты | 1280×800 или 640×400, 1–5 шт., PNG без прозрачности или JPEG | в `store/screenshots/`: настройки «Задачи Jira» — есть; нужно снять: кнопка в шапке MR, иконки в списке MR, блок кнопок в задаче Jira, фильтр меток, метки и кнопка «Посмотреть MR» в списке релиза, пункт «Переходов» в контекстном меню, раздел «Импорт и экспорт» |
 | Small promo tile | 440×280 | необязательно |
 
 ## Privacy practices
@@ -140,8 +146,9 @@ from the current page to a related one (e.g. its admin page).
 ### Permission justification
 
 **storage** — EN: Stores the user's settings (text template, project → Telegram topic / Jira URL / stage branch rules,
-username filter, Jira status, labels and field names, required release labels, "page → link" redirect rules)
-and syncs them across the user's devices.
+username filter, Jira status, labels and field names, required release labels and the MR field name,
+"page → link" redirect rules) and syncs them across the user's devices. The user can export these settings
+to a file or the clipboard and import them back; nothing is sent anywhere.
 
 **scripting** — EN: Registers each feature's content script (`chrome.scripting.registerContentScripts`) only on sites
 the user has added in the settings and granted access to. No code is injected anywhere else.
@@ -175,3 +182,11 @@ Jira site to filter the work items list and show MR links in it. Removing a site
 
 1. Поднять `version` в `manifest.json` (Web Store не принимает повторно ту же версию).
 2. `./scripts/build.sh` → загрузить `dist/dev-helper-<version>.zip`.
+
+### Для 1.3.0 в Developer Dashboard
+
+- Description — добавить блоки «Релизы Jira», «Переходы» и строку про импорт и экспорт (тексты выше).
+- Single purpose и Permission justification — обновить из этого файла: новые **contextMenus** и **activeTab**,
+  расширенные **storage** и **Host permissions** (запрос меток, статуса и поля MR на странице релиза).
+- Privacy policy — опубликованный `PRIVACY.md` должен быть версии от 2026-10-15.
+- Скриншоты — по возможности добавить релиз Jira с фильтром меток (список «нужно снять» выше).
