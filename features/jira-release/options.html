@@ -29,3 +29,17 @@
     Обязательные метки выделены. Клик по метке работает как клик по её чипу.
   </p>
 </fieldset>
+<fieldset>
+  <legend>MR в списке</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="jira-release-rowMrLinks" data-field="rowMrLinks">
+    <label for="jira-release-rowMrLinks">Кнопка «Посмотреть MR» в строках списка</label>
+  </div>
+  <p class="hint">
+    Кнопка «Посмотреть MR» справа от статуса задачи — открывает MR из поля задачи в новой вкладке,
+    а не задачу; несколько MR — кнопка на каждый с номером. Берутся в том же запросе, что и метки, плюс один запрос списка полей — найти поле по названию.
+  </p>
+  <label for="jira-release-mrField">Поле со ссылкой на MR</label>
+  <input type="text" id="jira-release-mrField" data-field="mrField" placeholder="Merge Request" spellcheck="false">
+  <p class="hint">Название поля, как в задаче, без учёта регистра. Пусто — «Merge Request».</p>
+</fieldset>

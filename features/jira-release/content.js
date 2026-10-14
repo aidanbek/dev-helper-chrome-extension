@@ -1,6 +1,6 @@
 // Фича «Релизы Jira»: фильтр по меткам над списком задач релиза (Releases → версия → Work items),
-// метки в строках списка, копирование отфильтрованных задач и ссылка на тот же отбор в поиске Jira.
-// В строках списка меток нет — метки задач версии берём из REST API Jira того же сайта.
+// метки и ссылки на MR в строках списка, копирование отфильтрованных задач и ссылка на тот же отбор в поиске Jira.
+// В строках списка меток и MR нет — берём их из REST API Jira того же сайта.
 (() => {
   'use strict';
 
@@ -12,6 +12,9 @@
   const CHIP_CLASS = 'dhr-chip';
   const STATUS_CLASS = 'dhr-labels-status';
   const ROW_LABELS_CLASS = 'dhr-row-labels';
+  const ROW_MRS_CLASS = 'dhr-row-mrs';
+  // Наши блоки в строках: в них не ищем ключи задач и название
+  const OWN_SELECTOR = '.' + BAR_CLASS + ', .' + ROW_LABELS_CLASS + ', .' + ROW_MRS_CLASS;
   // Атрибут, а не класс: React перезаписывает className строк при перерисовке, чужие атрибуты не трогает
   const HIDDEN_ATTR = 'data-dhr-hidden';
   // Псевдометки чипов «без меток» и «без обязательных меток»: в метках Jira пробелов не бывает
@@ -21,6 +24,8 @@
   const VERSION_RE = /\/versions\/(\d+)/;
   const KEY_RE = /^[A-Z][A-Z0-9_]*-\d+$/;
   const BROWSE_RE = /\/browse\/([A-Z][A-Z0-9_]*-\d+)(?:[/?#]|$)/;
+  // Ссылка на MR в значении поля (текст, URL или документ Atlassian): хвост /diffs, #note_… отрезаем
+  const MR_RE = /https?:\/\/[^\s"'<>\\]+?\/-\/merge_requests\/\d+/g;
 
   const PAGE_SIZE = 100;
   const MAX_PAGES = 50;
@@ -35,6 +40,13 @@
   // mode — как сочетать несколько include: 'or' — хотя бы одна, 'and' — все
   let version = null;
   let labelsByKey = null;
+  // Ключ → ссылки на MR из поля задачи; mrNote — почему ссылок нет (нет поля с таким названием)
+  let mrsByKey = new Map();
+  // Ключ → название статуса: по нему находим статус в строке, справа от него — кнопки MR
+  let statusByKey = new Map();
+  let mrNote = '';
+  // Номер загрузки: ответ устаревшей загрузки (сменили релиз или настройки) не применяем
+  let loadSeq = 0;
   let loading = false;
   let error = '';
   let fetchedAt = 0;
@@ -49,43 +61,83 @@
     return m ? m[1] : null;
   }
 
-  // Все задачи версии с метками; новый поиск Jira Cloud (/search/jql) листается по nextPageToken
-  async function fetchLabels(id) {
-    const result = new Map();
+  async function getJson(url) {
+    const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    return response.json();
+  }
+
+  // id поля по названию, как в задаче («Merge Request» → customfield_10050); null — такого поля нет
+  async function fieldId(name) {
+    const fields = await getJson('/rest/api/3/field');
+    const field = (fields || []).find((f) => normalize(f.name) === normalize(name));
+    return field ? field.id : null;
+  }
+
+  function mrUrlsIn(value) {
+    if (value == null) return [];
+    const text = typeof value === 'string' ? value : JSON.stringify(value);
+    return Array.from(new Set(text.match(MR_RE) || []));
+  }
+
+  // Все задачи версии с метками и, если нужно, полем MR; новый поиск Jira Cloud (/search/jql) листается по nextPageToken
+  async function fetchIssues(id, mrFieldId) {
+    const labels = new Map();
+    const mrs = new Map();
+    const statuses = new Map();
     let token = '';
     for (let page = 0; page < MAX_PAGES; page++) {
-      const params = new URLSearchParams({ jql: 'fixVersion = ' + id, fields: 'labels', maxResults: String(PAGE_SIZE) });
+      const fields = mrFieldId ? 'labels,status,' + mrFieldId : 'labels';
+      const params = new URLSearchParams({ jql: 'fixVersion = ' + id, fields, maxResults: String(PAGE_SIZE) });
       if (token) params.set('nextPageToken', token);
-      const response = await fetch('/rest/api/3/search/jql?' + params, {
-        credentials: 'same-origin',
-        headers: { Accept: 'application/json' }
+      const data = await getJson('/rest/api/3/search/jql?' + params);
+      (data.issues || []).forEach((issue) => {
+        const values = issue.fields || {};
+        labels.set(issue.key, values.labels || []);
+        if (mrFieldId) {
+          mrs.set(issue.key, mrUrlsIn(values[mrFieldId]));
+          statuses.set(issue.key, (values.status && values.status.name) || '');
+        }
       });
-      if (!response.ok) throw new Error('HTTP ' + response.status);
-      const data = await response.json();
-      (data.issues || []).forEach((issue) => result.set(issue.key, (issue.fields && issue.fields.labels) || []));
       token = data.nextPageToken;
       if (!token || data.isLast) break;
     }
-    return result;
+    return { labels, mrs, statuses };
+  }
+
+  async function fetchAll(id) {
+    const fieldName = settings.mrField || feature.defaults.mrField;
+    let mrFieldId = null;
+    let note = '';
+    if (settings.rowMrLinks) {
+      mrFieldId = await fieldId(fieldName);
+      if (!mrFieldId) note = 'Нет поля «' + fieldName + '» — ссылки на MR не показаны';
+    }
+    return { ...(await fetchIssues(id, mrFieldId)), note };
   }
 
   function load(id) {
+    const seq = ++loadSeq;
+    const current = () => seq === loadSeq && version === id;
     loading = true;
     fetchedAt = Date.now();
-    fetchLabels(id)
-      .then((map) => {
-        if (version !== id) return;
-        labelsByKey = map;
+    fetchAll(id)
+      .then((result) => {
+        if (!current()) return;
+        labelsByKey = result.labels;
+        mrsByKey = result.mrs;
+        statusByKey = result.statuses;
+        mrNote = result.note;
         error = '';
-        log('метки задач релиза загружены:', map.size);
+        log('метки задач релиза загружены:', result.labels.size);
       })
       .catch((e) => {
-        if (version !== id) return;
+        if (!current()) return;
         error = (e && e.message) || 'ошибка';
         log('не удалось загрузить метки задач релиза:', error);
       })
       .finally(() => {
-        if (version !== id) return;
+        if (!current()) return;
         loading = false;
         sync();
       });
@@ -96,7 +148,7 @@
     const found = [];
     const main = document.querySelector('main, [role="main"]') || document.body;
     main.querySelectorAll('*').forEach((el) => {
-      if (el.closest('.' + BAR_CLASS + ', .' + ROW_LABELS_CLASS)) return;
+      if (el.closest(OWN_SELECTOR)) return;
       let key = null;
       if (el.tagName === 'A') {
         const m = (el.getAttribute('href') || '').match(BROWSE_RE);
@@ -382,7 +434,7 @@
     let best = null;
     let bestLength = 0;
     row.querySelectorAll('*').forEach((el) => {
-      if (el.children.length || el.closest('.' + ROW_LABELS_CLASS)) return;
+      if (el.children.length || el.closest(OWN_SELECTOR)) return;
       const length = (el.textContent || '').trim().length;
       if (length > bestLength) {
         best = el;
@@ -427,19 +479,99 @@
     );
   }
 
-  // Строка Jira целиком кликабельна (открывает задачу): события блока меток до неё не доходят
+  // Строка Jira целиком кликабельна (открывает задачу), а над названием Jira показывает тултип у курсора.
+  // События мыши наших блоков до строки не доходят: клик не открывает задачу, наведение не вызывает тултип
+  const ROW_EVENTS = [
+    'pointerdown', 'mousedown', 'mouseup', 'pointerup', 'auxclick',
+    'pointerover', 'pointerout', 'mouseover', 'mouseout', 'pointermove', 'mousemove'
+  ];
+
+  function stopRowEvents(block) {
+    ROW_EVENTS.forEach((type) => block.addEventListener(type, (event) => event.stopPropagation()));
+  }
+
   function buildRowLabels() {
     const block = document.createElement('span');
     block.className = ROW_LABELS_CLASS;
-    ['pointerdown', 'mousedown', 'mouseup', 'pointerup', 'auxclick'].forEach((type) => {
-      block.addEventListener(type, (event) => event.stopPropagation());
-    });
+    stopRowEvents(block);
     block.addEventListener('click', (event) => {
       event.preventDefault();
       event.stopPropagation();
       const chip = event.target.closest('.dhr-row-label');
       if (chip) toggle(chip.dataset.label, event.shiftKey);
     });
+    return block;
+  }
+
+  function mrIid(url) {
+    const m = url.match(/\/merge_requests\/(\d+)/);
+    return m ? m[1] : '';
+  }
+
+  // «group/sub/project!12» — какой MR откроется
+  function mrRef(url) {
+    const m = url.match(/^https?:\/\/[^/]+\/(.+?)\/-\/merge_requests\/(\d+)/);
+    return m ? m[1] + '!' + m[2] : url;
+  }
+
+  // Статус задачи в строке: последний листовой элемент с текстом статуса из API (статус — справа),
+  // поднятый до обёртки-лозенджа — самого высокого предка с тем же текстом
+  function statusOf(row, key) {
+    const status = normalize(statusByKey.get(key));
+    if (!status) return null;
+    let found = null;
+    row.querySelectorAll('*').forEach((el) => {
+      if (!el.children.length && !el.closest(OWN_SELECTOR) && normalize(el.textContent) === status) found = el;
+    });
+    while (found && found.parentElement !== row && normalize(found.parentElement.textContent) === status) {
+      found = found.parentElement;
+    }
+    return found;
+  }
+
+  // Кнопки MR задачи — справа от статуса. Строки Jira фиксированной высоты: под метками места нет,
+  // туда — только если статус не нашёлся
+  function renderRowMrs(row, key, show) {
+    let block = row.querySelector('.' + ROW_MRS_CLASS);
+    const urls = show ? mrsByKey.get(key) || [] : [];
+    if (!urls.length) {
+      if (block) block.remove();
+      return;
+    }
+
+    const status = statusOf(row, key);
+    const after = status || row.querySelector('.' + ROW_LABELS_CLASS) || summaryOf(row);
+    if (!after) return;
+    if (!block) block = buildRowMrs();
+    block.classList.toggle('dhr-row-mrs-below', !status);
+    if (after.nextElementSibling !== block) after.insertAdjacentElement('afterend', block);
+
+    const signature = JSON.stringify(urls);
+    if (block.dataset.signature === signature) return;
+    block.dataset.signature = signature;
+    // Кнопка — ссылка: работают средний клик и «открыть в новой вкладке». Несколько MR различаем номером,
+    // какой это MR — в подсказке
+    block.replaceChildren(
+      ...urls.map((url) => {
+        const button = document.createElement('a');
+        button.className = 'dhr-row-mr';
+        button.href = url;
+        button.target = '_blank';
+        button.rel = 'noopener noreferrer';
+        button.setAttribute('role', 'button');
+        button.title = 'Открыть MR ' + mrRef(url) + ' в новой вкладке';
+        button.textContent = urls.length > 1 ? 'Посмотреть MR !' + mrIid(url) : 'Посмотреть MR';
+        return button;
+      })
+    );
+  }
+
+  // Ссылки открываются сами (браузер берёт ближайшую ссылку); клик до строки Jira не доходит
+  function buildRowMrs() {
+    const block = document.createElement('span');
+    block.className = ROW_MRS_CLASS;
+    stopRowEvents(block);
+    block.addEventListener('click', (event) => event.stopPropagation());
     return block;
   }
 
@@ -456,6 +588,9 @@
       version = id;
       labelsByKey = null;
       error = '';
+      mrsByKey = new Map();
+      statusByKey = new Map();
+      mrNote = '';
       selected = new Map();
       mode = 'or';
       checked = new Set();
@@ -493,9 +628,10 @@
       if (visible) shown++;
       setHidden(row, !visible);
       renderRowLabels(row, key, required, settings.rowLabels);
+      renderRowMrs(row, key, settings.rowMrLinks);
     });
-    // Блоки меток в строках, которые больше не строки списка
-    document.querySelectorAll('.' + ROW_LABELS_CLASS).forEach((block) => {
+    // Блоки меток и MR в строках, которые больше не строки списка
+    document.querySelectorAll('.' + ROW_LABELS_CLASS + ', .' + ROW_MRS_CLASS).forEach((block) => {
       const row = Array.from(rows.keys()).find((candidate) => candidate.contains(block));
       if (!row) block.remove();
     });
@@ -506,6 +642,7 @@
 
     renderBar(bar, chips, shown, rows.size, required);
     if (error) setStatus(bar, 'Не удалось обновить метки: ' + error, true);
+    else if (settings.rowMrLinks && mrNote) setStatus(bar, mrNote, true);
   }
 
   // Ключи со ссылками, которых нет в загруженных метках: задачу могли добавить в релиз после загрузки.
@@ -521,7 +658,7 @@
   }
 
   function unmount() {
-    document.querySelectorAll('.' + BAR_CLASS + ', .' + ROW_LABELS_CLASS).forEach((el) => el.remove());
+    document.querySelectorAll(OWN_SELECTOR).forEach((el) => el.remove());
     document.querySelectorAll('[' + HIDDEN_ATTR + ']').forEach((row) => row.removeAttribute(HIDDEN_ATTR));
   }
 
@@ -561,6 +698,8 @@
   try {
     DevHelper.storage.onFeatureChanged(feature.id, (changes) => {
       settings = { ...(settings || feature.defaults), ...changes };
+      // Поле MR приходит в том же запросе, что и метки: включили ссылки или сменили поле — загружаем заново
+      if (version && ('rowMrLinks' in changes || 'mrField' in changes)) load(version);
       sync();
     });
   } catch (e) { /* storage недоступен — работаем на загруженных настройках */ }
