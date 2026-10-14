@@ -40,6 +40,7 @@ Merge requests (GitLab, включая self-hosted):
   «без меток» и «без обязательных меток» — список обязательных меток настраивается.
 • Shift+клик по метке скрывает задачи с ней; несколько меток — «любая» или «все».
 • Метки задач прямо в строках списка релиза — все, по алфавиту; клик по метке фильтрует список.
+• Кнопка «Посмотреть MR» из поля задачи прямо в строках списка релиза, справа от статуса.
 • Копирование отфильтрованных задач («KEY — название») и ссылка на тот же отбор в поиске Jira.
 
 Переходы:
@@ -80,6 +81,7 @@ Jira releases (Jira Cloud):
   "no labels" and "no required labels" — the list of required labels is configurable.
 • Shift+click a label to hide issues with it; several labels match "any" or "all".
 • Issue labels right in the release list rows — all of them, alphabetically; click a label to filter.
+• "View MR" button for the MR from the issue field right in the release list rows, next to the status.
 • Copy the filtered issues ("KEY — summary") and open the same selection in Jira search.
 
 Redirects:
@@ -97,13 +99,13 @@ No data is collected: settings stay in your browser, pages are processed locally
 
 RU:
 • Релизы Jira: фильтр по меткам над списком задач релиза — чипы меток с числом задач, «без меток»
-  и «без обязательных меток», исключение меток и режим «любая / все»; все метки задачи прямо в строках
-  списка; копирование отфильтрованных задач и ссылка на тот же отбор в поиске Jira.
+  и «без обязательных меток», исключение меток и режим «любая / все»; все метки задачи и ссылки на её MR
+  прямо в строках списка; копирование отфильтрованных задач и ссылка на тот же отбор в поиске Jira.
 • Переходы: переход с текущей страницы на связанную по вашим правилам — из контекстного меню или по Alt+Shift+O.
 
 EN:
 • Jira releases: labels filter above a release's work items — label chips with issue counts, "no labels"
-  and "no required labels", excluding labels and "any / all" mode; all issue labels right in the list rows;
+  and "no required labels", excluding labels and "any / all" mode; all issue labels and MR links right in the list rows;
   copying the filtered issues and opening the same selection in Jira search.
 • Redirects: jump from the current page to a related one by your rules — from the context menu or with Alt+Shift+O.
 
@@ -152,7 +154,8 @@ site at that moment. On granted GitLab sites the content script runs only on mer
 the MR title, URL, branches, author and approvals from the page and requests the MR's own `widget.json`
 from the same origin to detect merge conflicts. On granted Jira sites it runs only on issue and release pages: it reads
 the issue status, labels and the merge request link field to show its buttons, and on a release page requests
-the labels of the release's issues from the same Jira site to filter the work items list. Removing a site revokes its access.
+the labels, status and the MR link field of the release's issues (plus the field list to find that field) from the same
+Jira site to filter the work items list and show MR links in it. Removing a site revokes its access.
 
 **Remote code** — No, all code is included in the package.
 

@@ -1,6 +1,6 @@
 # Политика конфиденциальности / Privacy Policy — Dev Helper
 
-_Последнее обновление / Last updated: 2026-10-09_
+_Последнее обновление / Last updated: 2026-10-15_
 
 ## Русский
 
@@ -18,7 +18,8 @@ Dev Helper не собирает, не хранит на внешних серв
   Эти данные обрабатываются только локально в браузере и никуда не отправляются.
 - **Сетевые запросы.** Расширение запрашивает `widget.json` текущего merge request у того же сервера,
   с которого открыта страница, чтобы узнать о конфликтах слияния. На странице релиза Jira расширение запрашивает
-  метки задач релиза у того же сайта Jira, чтобы показать фильтр по меткам. Других запросов нет, аналитики и трекинга нет.
+  у того же сайта Jira метки и статус задач релиза и ссылки на MR из поля задачи (и список полей, чтобы найти это поле),
+  чтобы показать фильтр по меткам и ссылки на MR в списке. Других запросов нет, аналитики и трекинга нет.
 - **Внешние ссылки.** По вашему действию расширение открывает указанные вами в настройках ссылки
   (Telegram, Jira, ссылки «Переходов»). Что происходит на этих сайтах, определяют их собственные политики.
 
@@ -38,8 +39,9 @@ Dev Helper does not collect user data, does not store it on external servers, an
   the URL of the current page or link to build a link by your rules.
   This data is processed locally in the browser only and is never sent anywhere.
 - **Network requests.** The extension requests the current merge request's `widget.json` from the same server
-  the page was loaded from, to detect merge conflicts. On a Jira release page it requests the labels of the release's
-  issues from the same Jira site to show the labels filter. No other requests are made; there is no analytics or tracking.
+  the page was loaded from, to detect merge conflicts. On a Jira release page it requests the labels, status and the MR link field
+  of the release's issues (and the field list, to find that field) from the same Jira site to show the labels filter
+  and MR links in the list. No other requests are made; there is no analytics or tracking.
 - **External links.** On your action the extension opens links you configured in the settings (Telegram, Jira, "Redirects" links).
   Those sites are governed by their own policies.
 
