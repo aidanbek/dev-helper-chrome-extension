@@ -37,7 +37,7 @@ Merge requests (GitLab, включая self-hosted):
 
 Релизы Jira (Jira Cloud):
 • Фильтр по меткам над списком задач на странице релиза: чипы меток с числом задач,
-  «без меток» и «без обязательных меток» — список обязательных меток настраивается.
+  «без меток» и «без обязательных меток» — обязательные метки задаются в настройках чипами.
 • Shift+клик по метке скрывает задачи с ней; несколько меток — «любая» или «все».
 • Метки задач прямо в строках списка релиза — все, по алфавиту; клик по метке фильтрует список.
 • Кнопка «Посмотреть MR» из поля задачи прямо в строках списка релиза, справа от статуса.
@@ -80,7 +80,7 @@ Jira issues (Jira Cloud):
 
 Jira releases (Jira Cloud):
 • Labels filter above the work items list on a release page: label chips with issue counts,
-  "no labels" and "no required labels" — the list of required labels is configurable.
+  "no labels" and "no required labels" — required labels are set as chips in the settings.
 • Shift+click a label to hide issues with it; several labels match "any" or "all".
 • Issue labels right in the release list rows — all of them, alphabetically; click a label to filter.
 • "View MR" button for the MR from the issue field right in the release list rows, next to the status.
