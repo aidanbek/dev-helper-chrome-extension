@@ -44,6 +44,8 @@
   let mrsByKey = new Map();
   // Ключ → название статуса: по нему находим статус в строке, справа от него — кнопки MR
   let statusByKey = new Map();
+  // Ключ → название задачи: копируем и задачи, которых ещё нет на странице (Jira догружает список частями)
+  let summaryByKey = new Map();
   let mrNote = '';
   // Номер загрузки: ответ устаревшей загрузки (сменили релиз или настройки) не применяем
   let loadSeq = 0;
@@ -80,20 +82,23 @@
     return Array.from(new Set(text.match(MR_RE) || []));
   }
 
-  // Все задачи версии с метками и, если нужно, полем MR; новый поиск Jira Cloud (/search/jql) листается по nextPageToken
+  // Все задачи версии с метками, названием и, если нужно, полем MR; новый поиск Jira Cloud (/search/jql)
+  // листается по nextPageToken
   async function fetchIssues(id, mrFieldId) {
     const labels = new Map();
     const mrs = new Map();
     const statuses = new Map();
+    const summaries = new Map();
     let token = '';
     for (let page = 0; page < MAX_PAGES; page++) {
-      const fields = mrFieldId ? 'labels,status,' + mrFieldId : 'labels';
+      const fields = mrFieldId ? 'labels,summary,status,' + mrFieldId : 'labels,summary';
       const params = new URLSearchParams({ jql: 'fixVersion = ' + id, fields, maxResults: String(PAGE_SIZE) });
       if (token) params.set('nextPageToken', token);
       const data = await getJson('/rest/api/3/search/jql?' + params);
       (data.issues || []).forEach((issue) => {
         const values = issue.fields || {};
         labels.set(issue.key, values.labels || []);
+        summaries.set(issue.key, values.summary || '');
         if (mrFieldId) {
           mrs.set(issue.key, mrUrlsIn(values[mrFieldId]));
           statuses.set(issue.key, (values.status && values.status.name) || '');
@@ -102,7 +107,7 @@
       token = data.nextPageToken;
       if (!token || data.isLast) break;
     }
-    return { labels, mrs, statuses };
+    return { labels, mrs, statuses, summaries };
   }
 
   async function fetchAll(id) {
@@ -127,6 +132,7 @@
         labelsByKey = result.labels;
         mrsByKey = result.mrs;
         statusByKey = result.statuses;
+        summaryByKey = result.summaries;
         mrNote = result.note;
         error = '';
         log('метки задач релиза загружены:', result.labels.size);
@@ -278,14 +284,20 @@
     return text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   }
 
-  // Видимые строки в порядке списка: «KEY — название»; в HTML ключ — ссылка на задачу
-  async function copyVisible() {
-    const items = [];
-    findRows().forEach((key, row) => {
-      if (row.hasAttribute(HIDDEN_ATTR)) return;
-      const summary = summaryOf(row);
-      items.push({ key, summary: summary ? summary.textContent.trim() : '' });
-    });
+  // Задачи релиза под фильтром, а не только строки на странице: Jira показывает список частями.
+  // Порядок — как в списке, затем ещё не показанные по ключу
+  function matchingKeys() {
+    const required = requiredLabels();
+    const keys = new Set(Array.from(findRows().values()));
+    Array.from(labelsByKey.keys())
+      .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
+      .forEach((key) => keys.add(key));
+    return Array.from(keys).filter((key) => matches(key, required));
+  }
+
+  // «KEY — название», по строке на задачу; в HTML ключ — ссылка на задачу
+  async function copyMatching() {
+    const items = matchingKeys().map((key) => ({ key, summary: (summaryByKey.get(key) || '').trim() }));
     if (!items.length) return;
     const line = (item) => (item.summary ? item.key + ' — ' + item.summary : item.key);
     const text = items.map(line).join('\n');
@@ -302,7 +314,7 @@
     }
   }
 
-  // Чипы: метки задач в списке с числом задач (частые — первыми), затем «без меток» и «без обязательных меток».
+  // Чипы: метки задач релиза (всех, не только показанных в списке) с числом задач (частые — первыми), затем «без меток» и «без обязательных меток».
   // Служебные чипы показываем и с нулём — ноль тоже ответ: все задачи размечены
   function chipsFor(keys, required) {
     const counts = new Map();
@@ -342,7 +354,8 @@
     copy.type = 'button';
     copy.className = 'dhr-action';
     copy.dataset.action = 'copy';
-    copy.title = 'Скопировать видимые задачи: «KEY — название», по строке на задачу';
+    copy.title = 'Скопировать задачи релиза под фильтром, в том числе ещё не показанные в списке: '
+      + '«KEY — название», по строке на задачу';
     const search = document.createElement('a');
     search.className = 'dhr-action';
     search.target = '_blank';
@@ -355,7 +368,7 @@
 
     bar.addEventListener('click', (event) => {
       if (event.target.closest('[data-action="copy"]')) {
-        copyVisible().catch((e) => log('не удалось скопировать задачи:', e && e.message));
+        copyMatching().catch((e) => log('не удалось скопировать задачи:', e && e.message));
         return;
       }
       const chip = event.target.closest('.' + CHIP_CLASS);
@@ -385,7 +398,7 @@
   const CHIP_HINT = 'Клик — показать задачи с меткой, Shift+клик — скрыть';
 
   // Чипы пересобираем только при изменении меток или выбора — иначе наш же MutationObserver зациклил бы sync
-  function renderBar(bar, chips, shown, total, required) {
+  function renderBar(bar, chips, shown, total, onPage, required) {
     const list = bar.querySelector('.dhr-chips');
     const signature = JSON.stringify([chips, Array.from(selected), mode]);
     if (list.dataset.signature !== signature) {
@@ -411,7 +424,11 @@
       }
       if (selected.size) list.append(buildChip('Сбросить', { reset: '1' }));
     }
-    setStatus(bar, selected.size ? 'Показано ' + shown + ' из ' + total : '', false);
+    // Счётчики — по всем задачам релиза; в списке Jira их может быть меньше, пока он не догружен
+    const parts = [];
+    if (selected.size) parts.push('Показано ' + shown + ' из ' + total);
+    if (onPage < total) parts.push('в списке пока ' + onPage + ' из ' + total + ' — счётчики и копирование по всем');
+    setStatus(bar, parts.join('; '), false);
 
     const copy = bar.querySelector('[data-action="copy"]');
     const copyText = Date.now() < copiedUntil ? 'Скопировано: ' + shown : 'Скопировать задачи (' + shown + ')';
@@ -590,6 +607,7 @@
       error = '';
       mrsByKey = new Map();
       statusByKey = new Map();
+      summaryByKey = new Map();
       mrNote = '';
       selected = new Map();
       mode = 'or';
@@ -616,17 +634,16 @@
 
     // Выбранная метка могла пропасть из списка — не оставляем невидимый фильтр
     const required = requiredLabels();
-    const chips = chipsFor(Array.from(rows.values()), required);
+    const keys = Array.from(labelsByKey.keys());
+    const chips = chipsFor(keys, required);
     const present = new Set(chips.map((chip) => chip.label));
     selected.forEach((state, label) => {
       if (!present.has(label)) selected.delete(label);
     });
 
-    let shown = 0;
+    const shown = keys.filter((key) => matches(key, required)).length;
     rows.forEach((key, row) => {
-      const visible = matches(key, required);
-      if (visible) shown++;
-      setHidden(row, !visible);
+      setHidden(row, !matches(key, required));
       renderRowLabels(row, key, required, settings.rowLabels);
       renderRowMrs(row, key, settings.rowMrLinks);
     });
@@ -640,7 +657,7 @@
       if (!rows.has(row)) row.removeAttribute(HIDDEN_ATTR);
     });
 
-    renderBar(bar, chips, shown, rows.size, required);
+    renderBar(bar, chips, shown, keys.length, new Set(rows.values()).size, required);
     if (error) setStatus(bar, 'Не удалось обновить метки: ' + error, true);
     else if (settings.rowMrLinks && mrNote) setStatus(bar, mrNote, true);
   }
