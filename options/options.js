@@ -21,6 +21,114 @@
       const value = values[el.dataset.field];
       if (el.type === 'checkbox') el.checked = !!value;
       else el.value = value == null ? '' : value;
+      const tags = tagInputs.get(el);
+      if (tags) tags.render();
+    }
+  }
+
+  // ---------- поле-список меток ----------
+  // input с data-tags прячется, вместо него — чипы и поле ввода. Значение в storage прежнее:
+  // строка через запятую, так что content-скрипты и импорт настроек ничего не замечают.
+
+  const tagInputs = new WeakMap();
+  const TAG_SEPARATOR = /[\s,]+/;
+
+  function parseTags(text) {
+    const tags = [];
+    for (const tag of text.split(TAG_SEPARATOR)) {
+      if (tag && !tags.some((t) => t.toLowerCase() === tag.toLowerCase())) tags.push(tag);
+    }
+    return tags;
+  }
+
+  function initTags(root) {
+    for (const field of root.querySelectorAll('input[data-tags]')) {
+      const box = document.createElement('div');
+      box.className = 'tags';
+      const list = document.createElement('span');
+      list.className = 'tags-list';
+      const editor = document.createElement('input');
+      editor.type = 'text';
+      editor.className = 'tags-editor';
+      editor.spellcheck = false;
+      // Подпись поля должна фокусировать поле ввода, а не спрятанный input
+      editor.id = field.id;
+      field.removeAttribute('id');
+      const placeholder = field.placeholder;
+      box.append(list, editor);
+      field.hidden = true;
+      field.after(box);
+
+      const getTags = () => parseTags(field.value);
+      const setTags = (tags) => {
+        field.value = tags.join(', ');
+        render();
+      };
+
+      function render() {
+        list.textContent = '';
+        const tags = getTags();
+        for (const tag of tags) {
+          const chip = document.createElement('span');
+          chip.className = 'tag';
+          chip.dataset.tag = tag.toLowerCase();
+          chip.textContent = tag;
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.textContent = '✕';
+          remove.title = 'Убрать метку';
+          // Без этого blur поля ввода перерисует чипы раньше, чем дойдёт клик
+          remove.addEventListener('mousedown', (event) => event.preventDefault());
+          remove.addEventListener('click', () => {
+            setTags(getTags().filter((t) => t !== tag));
+            editor.focus();
+          });
+          chip.append(remove);
+          list.append(chip);
+        }
+        editor.placeholder = tags.length ? '' : placeholder;
+      }
+
+      // Добавить введённое; уже добавленную метку подсвечиваем, а не дублируем
+      function commit() {
+        const added = parseTags(editor.value);
+        editor.value = '';
+        if (!added.length) return;
+        const tags = getTags();
+        const known = tags.map((t) => t.toLowerCase());
+        const dups = added.filter((t) => known.includes(t.toLowerCase()));
+        setTags([...tags, ...added.filter((t) => !known.includes(t.toLowerCase()))]);
+        for (const dup of dups) {
+          const chip = list.querySelector('[data-tag="' + CSS.escape(dup.toLowerCase()) + '"]');
+          if (!chip) continue;
+          chip.classList.add('tag-dup');
+          setTimeout(() => chip.classList.remove('tag-dup'), 800);
+        }
+      }
+
+      editor.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ',' || event.key === ' ') {
+          event.preventDefault();
+          commit();
+        } else if (event.key === 'Backspace' && !editor.value) {
+          setTags(getTags().slice(0, -1));
+        }
+      });
+      // Вставка списка целиком: всё, что до последнего разделителя, — сразу в чипы
+      editor.addEventListener('input', () => {
+        if (!TAG_SEPARATOR.test(editor.value)) return;
+        const rest = editor.value.split(TAG_SEPARATOR).pop();
+        editor.value = editor.value.slice(0, editor.value.length - rest.length);
+        commit();
+        editor.value = rest;
+      });
+      editor.addEventListener('blur', commit);
+      box.addEventListener('click', (event) => {
+        if (event.target === box || event.target === list) editor.focus();
+      });
+
+      tagInputs.set(field, { render });
+      render();
     }
   }
 
@@ -83,6 +191,7 @@
 
     const section = { feature, panel, body, nav, enabledInput, renderEnabled, hosts: [] };
     if (feature.content) buildSites(section);
+    initTags(body);
     if (feature.options && feature.options.init) feature.options.init(body);
 
     return section;

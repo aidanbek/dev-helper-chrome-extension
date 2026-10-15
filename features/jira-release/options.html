@@ -11,9 +11,10 @@
     того же сайта под вашей сессией: в строках списка их нет.
   </p>
   <label for="jira-release-requiredLabels">Обязательные метки</label>
-  <input type="text" id="jira-release-requiredLabels" data-field="requiredLabels" placeholder="back, front, mobile" spellcheck="false">
+  <input type="text" id="jira-release-requiredLabels" data-field="requiredLabels" data-tags placeholder="back, front, mobile" spellcheck="false">
   <p class="hint">
-    Через запятую или пробел, без учёта регистра. У каждой задачи релиза должна быть хотя бы одна из них:
+    Enter, запятая или пробел — добавить метку, можно вставить список целиком; Backspace в пустом поле — убрать
+    последнюю. Без учёта регистра, повторы не добавляются. У каждой задачи релиза должна быть хотя бы одна из них:
     чип «без обязательных меток» оставляет задачи, у которых нет ни одной. Обязательные метки в чипах выделены.
     Пусто — чипа нет.
   </p>
