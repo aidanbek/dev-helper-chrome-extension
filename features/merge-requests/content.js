@@ -295,9 +295,11 @@
   const HINT_APPROVED = 'MR набрал нужное число апрувов и все треды решены — отправлять на ревью не нужно';
 
   // Почему кнопка неактивна: Draft — на ревью рано, пока статус не снимут;
-  // апрувнут — на ревью уже не нужно, кнопка в состоянии success
+  // апрувнут — на ревью уже не нужно, кнопка в состоянии success;
+  // конфликты — сначала их разрешить, потом звать на ревью
   const BLOCKED_DRAFT = 'draft';
   const BLOCKED_APPROVED = 'approved';
+  const BLOCKED_CONFLICTS = 'conflicts';
   const HINT_CONFLICTS = 'В MR конфликты с целевой веткой — разрешите их перед отправкой на ревью';
   const HINT_CONFLICTS_OTHER = 'В MR конфликты с целевой веткой — автору нужно разрешить их перед мержем';
 
@@ -365,7 +367,7 @@
     setTooltip(btn,
       blocked === BLOCKED_APPROVED ? HINT_APPROVED
         : blocked === BLOCKED_DRAFT ? HINT_DRAFT
-          : btn._glmrhConflicts ? HINT_CONFLICTS + '. ' + action.hint
+          : blocked === BLOCKED_CONFLICTS ? HINT_CONFLICTS
             : action.hint);
   }
 
@@ -904,13 +906,6 @@
     return warning;
   }
 
-  // Перерисовываем только при смене состояния: правка текста кнопки снова дёрнула бы MutationObserver
-  function setConflicts(btn, value) {
-    if (!!btn._glmrhConflicts === value) return;
-    btn._glmrhConflicts = value;
-    renderButton(btn);
-  }
-
   // Предупреждение в ряду кнопок, только пока конфликты есть: сразу после «Отправить на ревью»,
   // а если её нет (чужой MR) — первым в ряду
   function renderConflictWarning(actions, btn) {
@@ -1028,8 +1023,8 @@
     if (actions && !actions.children.length) actions.remove();
 
     if (btn) {
-      setBlocked(btn, blockReason(getMrTitle(), getMrUrl()));
-      setConflicts(btn, conflicts);
+      // Конфликты известны только на странице MR — в списке их не проверяем
+      setBlocked(btn, blockReason(getMrTitle(), getMrUrl()) || (conflicts ? BLOCKED_CONFLICTS : ''));
     }
     if (jira) renderJiraButton(jira);
   }
