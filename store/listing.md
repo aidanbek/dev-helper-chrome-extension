@@ -62,7 +62,7 @@ Each helper can be enabled and configured separately.
 Merge requests (GitLab, including self-hosted):
 • "Send for review" button on the MR page: copies the MR title (bold) and link
   and opens the right Telegram topic — one per project.
-• Disabled while the MR is a Draft; shows "MR approved" once it is approved and all threads are resolved.
+• Disabled while the MR is a Draft or has merge conflicts; shows "MR approved" once it is approved and all threads are resolved.
 • "Has conflicts" warning when the MR conflicts with its target branch.
 • Copy icon in MR lists, no need to open the MR.
 • Customizable text template: {title}, {url}, {iid}, {project}, {branch}, {author}.
@@ -96,6 +96,18 @@ Settings import and export — as a file or via the clipboard: a backup or share
 
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
+
+### Что нового в 1.3.1 / What's new in 1.3.1
+
+RU:
+• Merge requests: пока в MR есть конфликты с целевой веткой, кнопка «Отправить на ревью» неактивна.
+• Релизы Jira: числа на чипах и копирование задач учитывают все задачи релиза, а не только догруженные в список.
+• Обязательные метки в настройках редактируются чипами.
+
+EN:
+• Merge requests: the "Send for review" button is disabled while the MR has merge conflicts with the target branch.
+• Jira releases: chip counts and copying cover all release issues, not only the rows loaded in the list.
+• Required labels are edited as chips in the settings.
 
 ### Что нового в 1.3.0 / What's new in 1.3.0
 
@@ -182,6 +194,11 @@ Jira site to filter the work items list and show MR links in it. Removing a site
 
 1. Поднять `version` в `manifest.json` (Web Store не принимает повторно ту же версию).
 2. `./scripts/build.sh` → загрузить `dist/dev-helper-<version>.zip`.
+
+### Для 1.3.1 в Developer Dashboard
+
+- Разрешения и обработка данных не менялись — Single purpose, Permission justification и Privacy policy оставить как есть.
+- Description — при желании дописать блок «Что нового в 1.3.1» (тексты выше).
 
 ### Для 1.3.0 в Developer Dashboard
 
