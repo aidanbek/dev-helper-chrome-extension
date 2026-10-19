@@ -1454,7 +1454,13 @@
     });
   }
 
+  // Кнопка подтверждения активна не сразу — есть время прочитать, куда мержим
+  const MERGE_CONFIRM_DELAY = 10;
+  let mergeCountdown = 0;
+
   function closeMergeConfirm() {
+    clearInterval(mergeCountdown);
+    mergeCountdown = 0;
     removeById(MERGE_MODAL_ID);
   }
 
@@ -1527,8 +1533,15 @@
     confirm.className = 'gl-button btn btn-md btn-danger';
     const confirmText = document.createElement('span');
     confirmText.className = 'gl-button-text';
-    confirmText.textContent = action + ' в ' + target;
     confirm.append(confirmText);
+
+    // «Merge в master (10)» … «Merge в master»: до конца отсчёта кнопка неактивна
+    let left = MERGE_CONFIRM_DELAY;
+    const renderCountdown = () => {
+      confirm.disabled = left > 0;
+      confirmText.textContent = action + ' в ' + target + (left > 0 ? ' (' + left + ')' : '');
+    };
+    renderCountdown();
 
     const footer = document.createElement('div');
     footer.className = 'glmrh-modal-footer';
@@ -1544,6 +1557,7 @@
     };
     cancel.addEventListener('click', close);
     confirm.addEventListener('click', () => {
+      if (left > 0) return;
       closeMergeConfirm();
       log('мерж в защищённую ветку подтверждён:', target);
       onConfirm();
@@ -1573,6 +1587,13 @@
 
     document.body.appendChild(backdrop);
     cancel.focus();
+    mergeCountdown = setInterval(() => {
+      left--;
+      renderCountdown();
+      if (left > 0) return;
+      clearInterval(mergeCountdown);
+      mergeCountdown = 0;
+    }, 1000);
   }
 
   // Повтор подтверждённого клика: перехват пропускает его один раз
