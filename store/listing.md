@@ -28,6 +28,8 @@ Merge requests (GitLab, включая self-hosted):
 • Кнопка «Открыть задачу в Jira» по ключу задачи из ветки или названия MR.
 • Кнопка «Создать MR на stage», когда MR готов: не Draft, без конфликтов, с апрувами и без нерешённых тредов.
 • Кнопки префиксов комментариев (blocking:, nit: — свои, со своими цветами): префикс в начало комментария в один клик.
+• Защита от случайного мержа в main, master, production и другие ветки из списка: кнопки Merge красные,
+  мерж — только после подтверждения с 10-секундным отсчётом.
 
 Задачи Jira (Jira Cloud):
 • Кнопка «Залить на stage» в задаче в статусе «Тестирование»: открывает MR из поля задачи,
@@ -72,6 +74,8 @@ Merge requests (GitLab, including self-hosted):
 • "Open Jira issue" button using the issue key from the branch or MR title.
 • "Create MR to stage" button once the MR is ready: not a Draft, no conflicts, approved, no unresolved threads.
 • Comment prefix buttons (blocking:, nit: — your own, in your own colors): put a prefix at the start of a comment in one click.
+• Protection against accidental merges into main, master, production and other branches from your list: Merge buttons
+  turn red, and merging needs a confirmation with a 10-second countdown.
 
 Jira issues (Jira Cloud):
 • "Deploy to stage" button on issues in testing: opens the MR from the issue field, checks it
@@ -98,6 +102,18 @@ Settings import and export — as a file, via the clipboard or from a URL: a bac
 
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
+
+### Что нового в 1.5.0 / What's new in 1.5.0
+
+RU:
+• Merge requests: подтверждение мержа в защищённые ветки (по умолчанию main, master, production, prod, release/*;
+  список шаблонов — в настройках). Кнопки Merge / Set to auto-merge / Merge immediately и бейдж целевой ветки красные;
+  клик открывает окно с проектом, ветками и действием, кнопка мержа в нём активна через 10 секунд.
+
+EN:
+• Merge requests: merge confirmation for protected branches (main, master, production, prod, release/* by default;
+  the pattern list is in the settings). Merge / Set to auto-merge / Merge immediately buttons and the target branch badge
+  turn red; a click opens a dialog with the project, branches and action, and its merge button is enabled after 10 seconds.
 
 ### Что нового в 1.4.0 / What's new in 1.4.0
 
@@ -173,7 +189,7 @@ from the current page to a related one (e.g. its admin page).
 
 **storage** — EN: Stores the user's settings (text template, project → Telegram topic / Jira URL / stage branch rules,
 username filter, Jira status, labels and field names, required release labels and the MR field name,
-"page → link" redirect rules, comment prefixes and their colors) and syncs them across the user's devices.
+"page → link" redirect rules, comment prefixes and their colors, protected branch patterns) and syncs them across the user's devices.
 The user can export these settings to a file or the clipboard and import them back from a file, pasted text
 or a URL the user enters; nothing is sent anywhere.
 
@@ -211,6 +227,13 @@ and downloads the settings file from it (with the site's cookies, so a private f
 
 1. Поднять `version` в `manifest.json` (Web Store не принимает повторно ту же версию).
 2. `./scripts/build.sh` → загрузить `dist/dev-helper-<version>.zip`.
+
+### Для 1.5.0 в Developer Dashboard
+
+- Новых разрешений нет, данные никуда не отправляются — Single purpose и Privacy policy оставить как есть.
+- Permission justification — обновить **storage** из этого файла (шаблоны защищённых веток).
+- Description — дописать строку про защиту от мержа в защищённые ветки (тексты выше),
+  при желании — блок «Что нового в 1.5.0».
 
 ### Для 1.4.0 в Developer Dashboard
 
