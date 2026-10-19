@@ -12,7 +12,8 @@
       'Кнопка «Открыть задачу в Jira» — по ключу задачи из ветки или названия MR. ' +
       'Апрувнутый MR (апрувы и все треды решены) гасит «Отправить на ревью» ' +
       'и открывает кнопку «Создать MR на stage». ' +
-      'Кнопки префиксов из настроек (например, blocking или nit) в форме комментария ставят префикс в начало комментария.',
+      'Кнопки префиксов из настроек (например, blocking или nit) в форме комментария ставят префикс в начало комментария. ' +
+      'Мерж в защищённую ветку (main, master, production…) — только после подтверждения, её бейдж в шапке MR красный.',
     // Content script регистрирует background на хостах из настройки hosts, к которым выдан доступ
     content: {
       sitesLabel: 'Адреса GitLab',
@@ -51,7 +52,14 @@
       commentPrefixButtons: true,
       // color — цвет кнопки (#rrggbb), пусто — обычная серая кнопка GitLab
       commentPrefixes: [],
-      commentPrefixBold: true
+      commentPrefixBold: true,
+      mergeConfirm: true,
+      // Шаблоны через запятую, «*» — любые символы
+      protectedBranches: 'main, master, production, prod, release/*'
+    },
+    // «main, release/*» -> ['main', 'release/*'] без пустых
+    branchPatternList(value) {
+      return String(value || '').split(/[\s,;]+/).map((p) => p.trim()).filter(Boolean);
     },
     // Префиксы комментариев из настройки: [{ name, color }] без пустых, повторов и двоеточий.
     // Строка 'blocking, nit' — формат ранних сборок, цвета у неё нет

@@ -166,6 +166,25 @@
 </fieldset>
 
 <fieldset>
+  <legend>Мерж в защищённые ветки</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="mr-mergeConfirm" data-field="mergeConfirm">
+    <label for="mr-mergeConfirm">Подтверждение перед мержем в защищённую ветку</label>
+  </div>
+  <p class="hint">
+    Клик по «Merge», «Set to auto-merge» или «Merge immediately» в MR, нацеленном в защищённую ветку,
+    сначала открывает окно с проектом, ветками и действием; мерж — только по кнопке подтверждения.
+    Бейдж защищённой целевой ветки в шапке MR — красный. Показывается на всех MR, независимо от «Только мои MR».
+  </p>
+  <label for="mr-protectedBranches">Защищённые ветки</label>
+  <input type="text" id="mr-protectedBranches" data-field="protectedBranches" placeholder="main, master, production, prod, release/*" spellcheck="false">
+  <p class="hint">
+    Имена или шаблоны через запятую, <code>*</code> — любые символы (в том числе <code>/</code>): <code>release/*</code>
+    совпадёт с <code>release/1.2</code>. Регистр не важен. Пусто — подтверждения нет.
+  </p>
+</fieldset>
+
+<fieldset>
   <legend>Префиксы комментариев</legend>
   <div class="checkbox">
     <input type="checkbox" id="mr-commentPrefixButtons" data-field="commentPrefixButtons">

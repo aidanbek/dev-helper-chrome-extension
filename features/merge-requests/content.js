@@ -1366,6 +1366,214 @@
     document.querySelectorAll('.' + PREFIXES_CLASS).forEach(renderPrefixes);
   }, true);
 
+  // ---------- подтверждение мержа в защищённую ветку ----------
+  // Клик по Merge / Set to auto-merge / Merge immediately перехватываем в capture-фазе, до обработчиков Vue,
+  // и спрашиваем подтверждение. «Мержить» повторяет исходный клик — он проходит мимо перехвата один раз.
+  // Целевая ветка защищённая — её бейдж в шапке MR красный.
+
+  const MERGE_BUTTON_SELECTOR = [
+    '[data-testid="merge-button"]',
+    '[data-testid="merge-immediately-dropdown-item"]',
+    '.accept-merge-request',
+    '.js-merge-button'
+  ].join(', ');
+  const MERGE_MODAL_ID = 'glmrh-merge-confirm';
+  const PROTECTED_BRANCH_CLASS = 'glmrh-protected-branch';
+
+  // «main, master, release/*» -> регулярки; «*» — любые символы, в том числе «/», регистр не важен
+  function branchPatterns(value) {
+    return feature.branchPatternList(value).map((pattern) => new RegExp('^' + pattern
+      .split('*')
+      .map(escapeRegExp)
+      .join('.*') + '$', 'i'));
+  }
+
+  let protectedPatterns = branchPatterns(feature.defaults.protectedBranches);
+
+  function isProtectedBranch(branch) {
+    return !!branch && protectedPatterns.some((re) => re.test(branch));
+  }
+
+  // Защищённая цель MR или '' — тогда мерж не перехватываем, даже если ветку не удалось прочитать:
+  // сломать мерж из-за изменившейся разметки GitLab хуже, чем пропустить подтверждение
+  function protectedTarget() {
+    if (!mergeConfirmEnabled || !isMrPage()) return '';
+    const target = getTargetBranch();
+    return isProtectedBranch(target) ? target : '';
+  }
+
+  // Бейджи целевой ветки — в шапке MR и её липком дубле. Меняем только класс — его MutationObserver не слушает
+  function renderProtectedBadges() {
+    const target = protectedTarget();
+    const source = getSourceBranch();
+    document.querySelectorAll('.ref-container, [data-testid="target-branch"]').forEach((el) => {
+      const text = textOf(el);
+      const on = !!target && text === target && text !== source;
+      el.classList.toggle(PROTECTED_BRANCH_CLASS, on);
+      if (on) el.title = 'Защищённая ветка: мерж с подтверждением';
+      else if (el.title === 'Защищённая ветка: мерж с подтверждением') el.removeAttribute('title');
+    });
+  }
+
+  function unmountProtectedBadges() {
+    document.querySelectorAll('.' + PROTECTED_BRANCH_CLASS).forEach((el) => {
+      el.classList.remove(PROTECTED_BRANCH_CLASS);
+      el.removeAttribute('title');
+    });
+  }
+
+  function closeMergeConfirm() {
+    removeById(MERGE_MODAL_ID);
+  }
+
+  function mergeConfirmRow(label, value) {
+    const row = document.createElement('div');
+    row.className = 'glmrh-modal-row';
+    const name = document.createElement('span');
+    name.className = 'glmrh-modal-label';
+    name.textContent = label;
+    row.append(name, value);
+    return row;
+  }
+
+  function branchBadge(branch, isProtected) {
+    const badge = document.createElement('code');
+    badge.className = 'glmrh-modal-branch' + (isProtected ? ' ' + PROTECTED_BRANCH_CLASS : '');
+    badge.textContent = branch || '—';
+    return badge;
+  }
+
+  // Модалка в стиле GitLab: фокус на «Отмена», Enter и Esc мерж не запускают
+  function showMergeConfirm(target, action, onConfirm) {
+    closeMergeConfirm();
+
+    const backdrop = document.createElement('div');
+    backdrop.id = MERGE_MODAL_ID;
+    backdrop.className = 'glmrh-modal-backdrop';
+
+    const modal = document.createElement('div');
+    modal.className = 'glmrh-modal';
+    modal.setAttribute('role', 'alertdialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-labelledby', MERGE_MODAL_ID + '-title');
+
+    const title = document.createElement('h2');
+    title.id = MERGE_MODAL_ID + '-title';
+    title.className = 'glmrh-modal-title';
+    title.append(buildIcon(ICON_WARNING), document.createTextNode('Мерж в защищённую ветку ' + target));
+
+    const branches = document.createElement('span');
+    branches.className = 'glmrh-modal-branches';
+    branches.append(branchBadge(getSourceBranch(), false), document.createTextNode(' → '), branchBadge(target, true));
+
+    const project = document.createElement('span');
+    project.textContent = projectPathOf(location.pathname) || '—';
+    const mrTitle = document.createElement('span');
+    mrTitle.textContent = getMrTitle() || '—';
+    const actionText = document.createElement('span');
+    actionText.textContent = action;
+
+    const body = document.createElement('div');
+    body.className = 'glmrh-modal-body';
+    body.append(
+      mergeConfirmRow('Проект', project),
+      mergeConfirmRow('MR', mrTitle),
+      mergeConfirmRow('Ветки', branches),
+      mergeConfirmRow('Действие', actionText)
+    );
+
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'gl-button btn btn-md btn-default';
+    const cancelText = document.createElement('span');
+    cancelText.className = 'gl-button-text';
+    cancelText.textContent = 'Отмена';
+    cancel.append(cancelText);
+
+    const confirm = document.createElement('button');
+    confirm.type = 'button';
+    confirm.className = 'gl-button btn btn-md btn-danger';
+    const confirmText = document.createElement('span');
+    confirmText.className = 'gl-button-text';
+    confirmText.textContent = action + ' в ' + target;
+    confirm.append(confirmText);
+
+    const footer = document.createElement('div');
+    footer.className = 'glmrh-modal-footer';
+    footer.append(cancel, confirm);
+
+    modal.append(title, body, footer);
+    backdrop.append(modal);
+
+    const previousFocus = document.activeElement;
+    const close = () => {
+      closeMergeConfirm();
+      if (previousFocus && previousFocus.focus) previousFocus.focus();
+    };
+    cancel.addEventListener('click', close);
+    confirm.addEventListener('click', () => {
+      closeMergeConfirm();
+      log('мерж в защищённую ветку подтверждён:', target);
+      onConfirm();
+    });
+    backdrop.addEventListener('mousedown', (event) => {
+      if (event.target === backdrop) close();
+    });
+    // Модалку открыли с клавиатуры: keyup того же пробела нажал бы «Отмена» — пропускаем keyup без своего keydown
+    let armed = false;
+    backdrop.addEventListener('keyup', (event) => {
+      if (armed) return;
+      event.preventDefault();
+      event.stopPropagation();
+    });
+    // Свои клавиши: Esc — отмена, Tab не уходит из модалки, остальное — не в GitLab (его горячие клавиши)
+    backdrop.addEventListener('keydown', (event) => {
+      armed = true;
+      event.stopPropagation();
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        close();
+      } else if (event.key === 'Tab') {
+        event.preventDefault();
+        (document.activeElement === cancel ? confirm : cancel).focus();
+      }
+    });
+
+    document.body.appendChild(backdrop);
+    cancel.focus();
+  }
+
+  // Повтор подтверждённого клика: перехват пропускает его один раз
+  let mergeBypass = false;
+
+  function replayClick(target) {
+    mergeBypass = true;
+    try {
+      target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+    } finally {
+      mergeBypass = false;
+    }
+  }
+
+  function interceptMerge(event) {
+    if (mergeBypass || !enabled) return;
+    const button = event.target instanceof Element && event.target.closest(MERGE_BUTTON_SELECTOR);
+    if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') return;
+    // Пункт дропдауна GitLab срабатывает и с клавиатуры — Enter / пробел, без click
+    if (event.type === 'keydown' && event.key !== 'Enter' && event.key !== ' ') return;
+    const target = protectedTarget();
+    if (!target) return;
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const action = textOf(button) || 'Merge';
+    const origin = event.type === 'click' ? event.target : button;
+    showMergeConfirm(target, action, () => replayClick(origin));
+  }
+
+  document.addEventListener('click', interceptMerge, true);
+  document.addEventListener('keydown', interceptMerge, true);
+
   // ---------- жизненный цикл ----------
 
   // До загрузки настроек ничего не вставляем — иначе у выключенной фичи мелькнёт кнопка
@@ -1376,6 +1584,7 @@
   let jiraButtonEnabled = feature.defaults.jiraButton;
   let stageButtonEnabled = feature.defaults.stageButton;
   let prefixButtonsEnabled = feature.defaults.commentPrefixButtons;
+  let mergeConfirmEnabled = feature.defaults.mergeConfirm;
   let myUsernames = [];
   let scheduled = false;
 
@@ -1406,6 +1615,8 @@
     if ('jiraButton' in values) jiraButtonEnabled = !!values.jiraButton;
     if ('stageButton' in values) stageButtonEnabled = !!values.stageButton;
     if ('commentPrefixButtons' in values) prefixButtonsEnabled = !!values.commentPrefixButtons;
+    if ('mergeConfirm' in values) mergeConfirmEnabled = !!values.mergeConfirm;
+    if ('protectedBranches' in values) protectedPatterns = branchPatterns(values.protectedBranches);
     if ('myUsername' in values) {
       myUsernames = parseUsernames(values.myUsername);
       // Фильтр поменялся — перестраиваем кнопки списка с нуля
@@ -1423,8 +1634,13 @@
         takeStageRequest();
         takePipelineRequest();
         mount();
+        renderProtectedBadges();
       }
-      else unmount();
+      else {
+        unmount();
+        unmountProtectedBadges();
+        closeMergeConfirm();
+      }
       if (prefixesOnThisMr()) mountPrefixes();
       else unmountPrefixes();
       if (enabled && listButtonsEnabled) mountListButtons();
