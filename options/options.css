@@ -225,6 +225,27 @@ div[data-check-result].error { color: #dd2b0e; }
 .row input.project { flex: 0 0 34%; }
 .row input.url { flex: 1; }
 
+/* Префиксы комментариев MR: имя, «цвет», выбор цвета, превью кнопки в стиле GitLab */
+.prefix-row { align-items: center; }
+.prefix-row input.prefix-name { flex: 0 0 30%; }
+.prefix-row .checkbox { font-weight: 400; }
+.prefix-row input.prefix-color { width: 36px; height: 32px; padding: 2px; border: 1px solid #bfbfc3; border-radius: 6px; background: #fff; cursor: pointer; }
+.prefix-row input.prefix-color:disabled { opacity: .35; cursor: default; }
+.prefix-preview {
+  flex: 1;
+  max-width: max-content;
+  padding: 7px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 18px;
+  color: #3a383f;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px #bfbfc3;
+  white-space: nowrap;
+}
+.prefix-preview.colored { color: var(--prefix-color); box-shadow: inset 0 0 0 1px var(--prefix-color); }
+.prefix-preview.empty { opacity: .5; }
+
 .sites-list { margin-bottom: 4px; }
 .site {
   display: flex;

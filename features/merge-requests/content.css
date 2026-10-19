@@ -74,3 +74,35 @@
   margin: -4px 0 -4px 4px;
   vertical-align: middle;
 }
+
+/* Префиксы комментариев — свой ряд между редактором комментария и его кнопками (Start a review / Cancel).
+   Вид — gl-button; цветная кнопка — контур и текст своего цвета (как «Add comment now»),
+   применённый префикс — заливка (как «Start a review») */
+.glmrh-prefixes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.glmrh-prefix.glmrh-prefix-colored {
+  color: var(--glmrh-prefix-color) !important;
+  box-shadow: inset 0 0 0 1px var(--glmrh-prefix-color) !important;
+}
+
+.glmrh-prefix.glmrh-prefix-colored:hover {
+  background-color: color-mix(in srgb, var(--glmrh-prefix-color) 10%, transparent) !important;
+  box-shadow: inset 0 0 0 2px var(--glmrh-prefix-color) !important;
+}
+
+.glmrh-prefix.glmrh-prefix-colored.glmrh-prefix-active {
+  color: #fff !important;
+  background-color: var(--glmrh-prefix-color) !important;
+}
+
+/* Серая кнопка без своего цвета: применённый префикс — заливка цветом текста GitLab */
+.glmrh-prefix:not(.glmrh-prefix-colored).glmrh-prefix-active {
+  color: var(--gl-background-color-default, #fff) !important;
+  background-color: var(--gl-text-color-default, #3a383f) !important;
+  box-shadow: none !important;
+}

@@ -17,6 +17,73 @@
     return root.querySelector('[data-rules="' + name + '"]');
   }
 
+  // ---------- префиксы комментариев: имя, цвет, превью кнопки ----------
+
+  const DEFAULT_PREFIX_COLOR = '#1f75cb';
+
+  function prefixListOf(root) {
+    return root.querySelector('[data-prefixes]');
+  }
+
+  function renderPrefixPreview(row) {
+    const name = row.querySelector('.prefix-name').value.trim().replace(/:+$/, '');
+    const colored = row.querySelector('.prefix-colored').checked;
+    const color = row.querySelector('.prefix-color');
+    color.disabled = !colored;
+    const preview = row.querySelector('.prefix-preview');
+    preview.textContent = name || 'префикс';
+    preview.classList.toggle('empty', !name);
+    preview.style.setProperty('--prefix-color', colored ? color.value : '');
+    preview.classList.toggle('colored', colored);
+  }
+
+  let prefixRowId = 0;
+
+  function addPrefixRow(root, prefix = { name: '', color: '' }) {
+    const row = document.createElement('div');
+    row.className = 'row prefix-row';
+
+    const name = document.createElement('input');
+    name.type = 'text';
+    name.className = 'prefix-name';
+    name.placeholder = 'nit';
+    name.spellcheck = false;
+    name.value = prefix.name || '';
+
+    const toggle = document.createElement('div');
+    toggle.className = 'checkbox';
+    const colored = document.createElement('input');
+    colored.type = 'checkbox';
+    colored.className = 'prefix-colored';
+    colored.id = 'mr-prefix-colored-' + ++prefixRowId;
+    colored.checked = !!prefix.color;
+    const label = document.createElement('label');
+    label.htmlFor = colored.id;
+    label.textContent = 'цвет';
+    toggle.append(colored, label);
+
+    const color = document.createElement('input');
+    color.type = 'color';
+    color.className = 'prefix-color';
+    color.value = prefix.color || DEFAULT_PREFIX_COLOR;
+
+    const preview = document.createElement('span');
+    preview.className = 'prefix-preview';
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'remove';
+    remove.textContent = '✕';
+    remove.title = 'Удалить префикс';
+    remove.addEventListener('click', () => row.remove());
+
+    row.append(name, toggle, color, preview, remove);
+    row.addEventListener('input', () => renderPrefixPreview(row));
+    row.addEventListener('change', () => renderPrefixPreview(row));
+    prefixListOf(root).appendChild(row);
+    renderPrefixPreview(row);
+  }
+
   function addRuleRow(root, name, rule = { project: '', url: '' }) {
     const row = document.createElement('div');
     row.className = 'row';
@@ -55,6 +122,7 @@
         root.querySelectorAll('[data-add-rule]').forEach((button) => {
           button.addEventListener('click', () => addRuleRow(root, button.dataset.addRule));
         });
+        root.querySelector('[data-add-prefix]').addEventListener('click', () => addPrefixRow(root));
       },
 
       load(root, values) {
@@ -64,6 +132,11 @@
           rules.forEach((rule) => addRuleRow(root, name, rule));
           if (!rules.length) addRuleRow(root, name);
         }
+
+        const prefixes = feature.commentPrefixList(values.commentPrefixes);
+        prefixListOf(root).innerHTML = '';
+        prefixes.forEach((prefix) => addPrefixRow(root, prefix));
+        if (!prefixes.length) addPrefixRow(root);
       },
 
       collect(root) {
@@ -76,6 +149,13 @@
             }))
             .filter((rule) => rule.project && rule.url);
         }
+
+        values.commentPrefixes = feature.commentPrefixList(
+          Array.from(prefixListOf(root).querySelectorAll('.prefix-row')).map((row) => ({
+            name: row.querySelector('.prefix-name').value,
+            color: row.querySelector('.prefix-colored').checked ? row.querySelector('.prefix-color').value : ''
+          }))
+        );
 
         // Числовое поле приходит строкой; пустое или кривое — порог по умолчанию
         const approvals = parseInt(root.querySelector('[data-field="minApprovals"]').value, 10);

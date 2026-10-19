@@ -1098,6 +1098,274 @@
     document.querySelectorAll('.' + ROW_BTN_CLASS).forEach((btn) => btn.remove());
   }
 
+  // ---------- префиксы комментариев ----------
+  // Ряд кнопок между редактором комментария и его кнопками Start a review / Add comment now / Cancel:
+  // клик ставит префикс в начало комментария, заменяя уже стоящий, повторный клик — убирает.
+  // Редактор GitLab бывает двух видов: textarea (plain text) и ProseMirror (rich text) — вставка в каждый своя.
+  // Пишем через execCommand: правка попадает в историю Ctrl+Z, а Vue и ProseMirror видят обычный ввод.
+
+  const NOTE_ACTIONS_SELECTOR = '.note-form-actions';
+  const PREFIXES_CLASS = 'glmrh-prefixes';
+  const PREFIX_ACTIVE_CLASS = 'glmrh-prefix-active';
+
+  // [{ name, color }]
+  function commentPrefixes() {
+    return feature.commentPrefixList(settings && settings.commentPrefixes);
+  }
+
+  function escapeRegExp(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function namesPattern(prefixes) {
+    return prefixes.map((p) => escapeRegExp(p.name)).join('|');
+  }
+
+  // Префикс в начале markdown: «nit: », «**nit:** », «**nit**: »
+  function markdownPrefixRe(prefixes) {
+    return new RegExp('^(?:\\*\\*|__)?(' + namesPattern(prefixes) + ')(?::(?:\\*\\*|__)?|(?:\\*\\*|__):)[ \\t]*', 'i');
+  }
+
+  // В rich text жирный — разметка, а не звёздочки: в тексте просто «nit: »
+  function textPrefixRe(prefixes) {
+    return new RegExp('^(' + namesPattern(prefixes) + '):[ \\t\\u00a0]*', 'i');
+  }
+
+  function isVisible(el) {
+    return !!el && el.getClientRects().length > 0;
+  }
+
+  // { kind: 'rich' | 'plain', el } — редактор той же формы, что и el (строка кнопок или ряд префиксов)
+  function findEditor(el) {
+    const scope = el.closest('form, .js-discussion-note-form, .note-edit-form') || el.parentElement;
+    if (!scope) return null;
+    const rich = scope.querySelector('.ProseMirror[contenteditable="true"]');
+    if (isVisible(rich)) return { kind: 'rich', el: rich };
+    const plain = Array.from(scope.querySelectorAll('textarea')).find(isVisible);
+    return plain ? { kind: 'plain', el: plain } : null;
+  }
+
+  function firstBlock(root) {
+    return root.firstElementChild || root;
+  }
+
+  // Префикс, который уже стоит в начале комментария: { name, length } или null
+  function currentPrefix(editor, prefixes) {
+    if (!prefixes.length) return null;
+    const m = editor.kind === 'rich'
+      ? textPrefixRe(prefixes).exec(firstBlock(editor.el).textContent || '')
+      : markdownPrefixRe(prefixes).exec(editor.el.value);
+    if (!m) return null;
+    const found = prefixes.find((p) => p.name.toLowerCase() === m[1].toLowerCase());
+    return { name: found.name, length: m[0].length };
+  }
+
+  function applyPlain(textarea, current, text) {
+    const removed = current ? current.length : 0;
+    const caret = textarea.selectionEnd;
+    textarea.focus();
+    textarea.setSelectionRange(0, removed);
+    const done = text ? document.execCommand('insertText', false, text) : document.execCommand('delete');
+    if (!done) {
+      textarea.setRangeText(text, 0, removed);
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    // Курсор остаётся там, где был, со сдвигом на разницу префиксов
+    const pos = Math.max(text.length, caret - removed + text.length);
+    textarea.setSelectionRange(pos, pos);
+  }
+
+  // Диапазон от начала первого абзаца длиной length символов
+  function rangeAtStart(root, length) {
+    const block = firstBlock(root);
+    const range = document.createRange();
+    range.setStart(block, 0);
+    range.collapse(true);
+    const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+    let rest = length;
+    for (let node = walker.nextNode(); node && rest > 0; node = walker.nextNode()) {
+      if (rest <= node.length) range.setEnd(node, rest);
+      rest -= node.length;
+    }
+    return range;
+  }
+
+  function select(range) {
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  // ProseMirror узнаёт о смене выделения из selectionchange — событие асинхронное, ждём его
+  function nextTick() {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+  }
+
+  function startsBold(root) {
+    const walker = document.createTreeWalker(firstBlock(root), NodeFilter.SHOW_TEXT);
+    const node = walker.nextNode();
+    return !!(node && node.parentElement.closest('strong, b'));
+  }
+
+  // Жирный — горячей клавишей самого редактора: звёздочки через insertText остались бы текстом,
+  // а <strong> из insertHTML GitLab разбирает не всегда
+  function toggleBold(root) {
+    const mac = /Mac/i.test(navigator.platform);
+    root.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'b',
+      code: 'KeyB',
+      keyCode: 66,
+      ctrlKey: !mac,
+      metaKey: mac,
+      bubbles: true,
+      cancelable: true
+    }));
+  }
+
+  async function applyRich(root, current, name, bold) {
+    root.focus();
+    // Удалённый жирный префикс оставил бы жирный включённым для дальнейшего ввода — сначала снимаем его
+    if (current && startsBold(root)) {
+      select(rangeAtStart(root, current.name.length + 1));
+      await nextTick();
+      toggleBold(root);
+      await nextTick();
+    }
+    select(rangeAtStart(root, current ? current.length : 0));
+    if (!name) {
+      document.execCommand('delete');
+      return;
+    }
+    document.execCommand('insertText', false, name + ': ');
+    // Вставка наследует оформление заменённого префикса — сверяем и при нужде переключаем
+    await nextTick();
+    if (startsBold(root) !== bold) {
+      select(rangeAtStart(root, name.length + 1));
+      await nextTick();
+      toggleBold(root);
+      await nextTick();
+      if (startsBold(root) !== bold) log('не удалось переключить жирный у префикса');
+    }
+    const end = rangeAtStart(root, name.length + 2);
+    end.collapse(false);
+    select(end);
+  }
+
+  async function togglePrefix(box, name) {
+    const editor = findEditor(box);
+    if (!editor) {
+      log('редактор комментария не найден');
+      return;
+    }
+    const current = currentPrefix(editor, commentPrefixes());
+    const next = current && current.name === name ? null : name;
+    const bold = !!settings.commentPrefixBold;
+    if (editor.kind === 'rich') {
+      await applyRich(editor.el, current, next, bold);
+    } else {
+      applyPlain(editor.el, current, !next ? '' : bold ? '**' + next + ':** ' : next + ': ');
+    }
+    renderPrefixes(box);
+  }
+
+  // Классы оформления кнопки GitLab (размер) без вида, состояний, js-хуков, отступов и ширины —
+  // в своём ряду отступы задаёт gap, а растянутая на мобильном Cancel не должна растягивать префиксы
+  const BUTTON_VARIANT_RE = /^btn-(confirm|danger|success|info|warning|default|dashed|link)(-|$)/;
+  const LAYOUT_CLASS_RE = /^([a-z]+:)?gl-(m[trblxy]?|w|flex|order|self)-/;
+
+  function buttonClasses(template) {
+    const classes = template
+      ? Array.from(template.classList).filter((name) =>
+        /^(gl-|btn|[a-z]+:gl-)/.test(name) && !BUTTON_VARIANT_RE.test(name) && !LAYOUT_CLASS_RE.test(name) &&
+        !/^(gl-|btn-)?(disabled|selected|loading)$/.test(name))
+      : [];
+    if (!classes.includes('btn')) classes.push('btn');
+    if (!classes.includes('gl-button')) classes.push('gl-button');
+    if (!classes.some((name) => /^btn-(sm|md|lg)$/.test(name))) classes.push('btn-md');
+    return [...classes, 'btn-default', 'glmrh-prefix'].join(' ');
+  }
+
+  // Кнопки — копия Cancel по классам GitLab. Цвет — контур и текст, у применённого префикса — заливка
+  function buildPrefixes(prefixes, template) {
+    const box = document.createElement('span');
+    box.className = PREFIXES_CLASS;
+    box.dataset.prefixes = JSON.stringify(prefixes);
+    const className = buttonClasses(template);
+    for (const { name, color } of prefixes) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = className;
+      if (color) {
+        chip.classList.add('glmrh-prefix-colored');
+        chip.style.setProperty('--glmrh-prefix-color', color);
+      }
+      chip.dataset.prefix = name;
+      chip.title = 'Префикс «' + name + ':» в начало комментария; повторный клик — убрать';
+      const text = document.createElement('span');
+      text.className = 'gl-button-text';
+      text.textContent = name;
+      chip.append(text);
+      // Фокус и курсор остаются в редакторе
+      chip.addEventListener('mousedown', (event) => event.preventDefault());
+      chip.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        togglePrefix(box, name);
+      });
+      box.append(chip);
+    }
+    return box;
+  }
+
+  // Подсветка префикса, который уже стоит в комментарии. Меняем только классы — их MutationObserver не слушает
+  function renderPrefixes(box) {
+    const editor = box.parentElement && findEditor(box);
+    const current = editor && currentPrefix(editor, commentPrefixes());
+    for (const chip of box.children) {
+      chip.classList.toggle(PREFIX_ACTIVE_CLASS, !!current && chip.dataset.prefix === current.name);
+    }
+  }
+
+  // Видимые кнопки GitLab в строке — по последней (обычно Cancel) берём размер префиксов
+  function actionButtons(actions) {
+    return Array.from(actions.querySelectorAll('button, a.btn')).filter(isVisible);
+  }
+
+  function mountPrefixes() {
+    const prefixes = commentPrefixes();
+    const key = JSON.stringify(prefixes);
+    for (const actions of document.querySelectorAll(NOTE_ACTIONS_SELECTOR)) {
+      let box = actions.previousElementSibling;
+      if (box && !box.classList.contains(PREFIXES_CLASS)) box = null;
+      if (box && box.dataset.prefixes !== key) {
+        box.remove();
+        box = null;
+      }
+      if (!prefixes.length || !findEditor(actions)) {
+        if (box) box.remove();
+        continue;
+      }
+      if (!box) {
+        const buttons = actionButtons(actions);
+        box = buildPrefixes(prefixes, buttons[buttons.length - 1] || null);
+        actions.insertAdjacentElement('beforebegin', box);
+        // Отступ от редактора — как у строки кнопок GitLab, она сама держит свой
+        const top = parseFloat(getComputedStyle(actions).marginTop) || 0;
+        box.style.marginTop = (top || 8) + 'px';
+      }
+      renderPrefixes(box);
+    }
+  }
+
+  function unmountPrefixes() {
+    document.querySelectorAll('.' + PREFIXES_CLASS).forEach((box) => box.remove());
+  }
+
+  // Ввод в textarea не меняет DOM — подсветку обновляем по событию input
+  document.addEventListener('input', () => {
+    document.querySelectorAll('.' + PREFIXES_CLASS).forEach(renderPrefixes);
+  }, true);
+
   // ---------- жизненный цикл ----------
 
   // До загрузки настроек ничего не вставляем — иначе у выключенной фичи мелькнёт кнопка
@@ -1107,6 +1375,7 @@
   let hotkeyEnabled = feature.defaults.hotkey;
   let jiraButtonEnabled = feature.defaults.jiraButton;
   let stageButtonEnabled = feature.defaults.stageButton;
+  let prefixButtonsEnabled = feature.defaults.commentPrefixButtons;
   let myUsernames = [];
   let scheduled = false;
 
@@ -1124,6 +1393,11 @@
     return enabled && isMrPage() && stageButtonEnabled;
   }
 
+  // Префиксы нужны как раз на ревью чужих MR — фильтр «Только мои MR» не применяем
+  function prefixesOnThisMr() {
+    return enabled && isMrPage() && prefixButtonsEnabled;
+  }
+
   function applySettings(values) {
     settings = { ...(settings || feature.defaults), ...values };
     if ('enabled' in values) enabled = !!values.enabled;
@@ -1131,6 +1405,7 @@
     if ('listButtons' in values) listButtonsEnabled = !!values.listButtons;
     if ('jiraButton' in values) jiraButtonEnabled = !!values.jiraButton;
     if ('stageButton' in values) stageButtonEnabled = !!values.stageButton;
+    if ('commentPrefixButtons' in values) prefixButtonsEnabled = !!values.commentPrefixButtons;
     if ('myUsername' in values) {
       myUsernames = parseUsernames(values.myUsername);
       // Фильтр поменялся — перестраиваем кнопки списка с нуля
@@ -1150,6 +1425,8 @@
         mount();
       }
       else unmount();
+      if (prefixesOnThisMr()) mountPrefixes();
+      else unmountPrefixes();
       if (enabled && listButtonsEnabled) mountListButtons();
       else unmountListButtons();
     });

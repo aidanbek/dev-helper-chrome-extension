@@ -11,7 +11,8 @@
       'по желанию открывает топик в Telegram. Shift+клик инвертирует открытие Telegram. ' +
       'Кнопка «Открыть задачу в Jira» — по ключу задачи из ветки или названия MR. ' +
       'Апрувнутый MR (апрувы и все треды решены) гасит «Отправить на ревью» ' +
-      'и открывает кнопку «Создать MR на stage».',
+      'и открывает кнопку «Создать MR на stage». ' +
+      'Кнопки префиксов из настроек (например, blocking или nit) в форме комментария ставят префикс в начало комментария.',
     // Content script регистрирует background на хостах из настройки hosts, к которым выдан доступ
     content: {
       sitesLabel: 'Адреса GitLab',
@@ -46,7 +47,26 @@
       stageButton: true,
       defaultStageBranch: 'stage',
       stageRules: [],
-      minApprovals: 2
+      minApprovals: 2,
+      commentPrefixButtons: true,
+      // color — цвет кнопки (#rrggbb), пусто — обычная серая кнопка GitLab
+      commentPrefixes: [],
+      commentPrefixBold: true
+    },
+    // Префиксы комментариев из настройки: [{ name, color }] без пустых, повторов и двоеточий.
+    // Строка 'blocking, nit' — формат ранних сборок, цвета у неё нет
+    commentPrefixList(value) {
+      const items = typeof value === 'string'
+        ? value.split(/[\s,]+/).map((name) => ({ name, color: '' }))
+        : Array.isArray(value) ? value : [];
+      const prefixes = [];
+      for (const item of items) {
+        const name = String((item && item.name) || '').trim().replace(/:+$/, '');
+        if (!name || prefixes.some((p) => p.name.toLowerCase() === name.toLowerCase())) continue;
+        const color = /^#[0-9a-f]{6}$/i.test((item && item.color) || '') ? item.color.toLowerCase() : '';
+        prefixes.push({ name, color });
+      }
+      return prefixes;
     },
     // Свой username у каждого — в экспорт «для команды» не попадает
     personal: ['myUsername'],

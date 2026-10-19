@@ -164,3 +164,27 @@
   <div data-rules="stage"></div>
   <button type="button" class="secondary" data-add-rule="stage">+ Добавить правило</button>
 </fieldset>
+
+<fieldset>
+  <legend>Префиксы комментариев</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="mr-commentPrefixButtons" data-field="commentPrefixButtons">
+    <label for="mr-commentPrefixButtons">Кнопки префиксов в форме комментария</label>
+  </div>
+  <p class="hint">
+    Отдельным рядом над кнопками комментария («Start a review» / «Add comment now» / «Cancel») — кнопка на каждый префикс.
+    Клик ставит префикс в начало комментария, заменяя уже стоящий; повторный клик по тому же префиксу — убирает.
+    Работает в обоих режимах редактора (rich text и plain text). Показывается на всех MR, независимо от «Только мои MR».
+  </p>
+  <label>Префиксы</label>
+  <p class="hint hint-top">
+    Имя — без двоеточия, оно добавится само. Цвет — контур и текст кнопки, у применённого префикса — заливка;
+    без галочки «цвет» — обычная серая кнопка GitLab. Справа — как кнопка будет выглядеть. Порядок — как в списке. Пустой список — кнопок нет.
+  </p>
+  <div data-prefixes></div>
+  <button type="button" class="secondary" data-add-prefix>+ Добавить префикс</button>
+  <div class="checkbox">
+    <input type="checkbox" id="mr-commentPrefixBold" data-field="commentPrefixBold">
+    <label for="mr-commentPrefixBold">Префикс жирным (<code>**nit:**</code>)</label>
+  </div>
+</fieldset>
