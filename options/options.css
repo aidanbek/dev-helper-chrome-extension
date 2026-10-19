@@ -41,6 +41,9 @@ body {
   color: #89888d;
 }
 
+/* «Сервис» под списком фич — отступ как между логотипом и «Фичи» */
+#nav + .nav-caption { margin-top: 20px; }
+
 .nav-item {
   display: flex;
   align-items: center;
