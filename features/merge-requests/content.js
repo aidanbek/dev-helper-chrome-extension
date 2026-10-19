@@ -1379,6 +1379,8 @@
   ].join(', ');
   const MERGE_MODAL_ID = 'glmrh-merge-confirm';
   const PROTECTED_BRANCH_CLASS = 'glmrh-protected-branch';
+  const PROTECTED_MERGE_CLASS = 'glmrh-protected-merge';
+  const PROTECTED_MERGE_HINT = 'Dev Helper: мерж в защищённую ветку — с подтверждением';
 
   // «main, master, release/*» -> регулярки; «*» — любые символы, в том числе «/», регистр не важен
   function branchPatterns(value) {
@@ -1415,10 +1417,40 @@
     });
   }
 
+  // Кнопки мержа — красные, чтобы было видно, что перехват включён: Merge / Set to auto-merge,
+  // стрелка дропдауна рядом с ней (одна группа кнопок) и пункт Merge immediately, пока дропдаун открыт
+  function mergeControls() {
+    const controls = new Set();
+    document.querySelectorAll(MERGE_BUTTON_SELECTOR).forEach((el) => {
+      controls.add(el);
+      const group = el.closest('.btn-group, .gl-button-group');
+      if (group) group.querySelectorAll('.btn').forEach((btn) => controls.add(btn));
+    });
+    return controls;
+  }
+
+  function renderProtectedMerge() {
+    const on = !!protectedTarget();
+    const controls = on ? mergeControls() : new Set();
+    for (const el of controls) {
+      el.classList.add(PROTECTED_MERGE_CLASS);
+      if (!el.title) el.title = PROTECTED_MERGE_HINT;
+    }
+    document.querySelectorAll('.' + PROTECTED_MERGE_CLASS).forEach((el) => {
+      if (controls.has(el)) return;
+      el.classList.remove(PROTECTED_MERGE_CLASS);
+      if (el.title === PROTECTED_MERGE_HINT) el.removeAttribute('title');
+    });
+  }
+
   function unmountProtectedBadges() {
     document.querySelectorAll('.' + PROTECTED_BRANCH_CLASS).forEach((el) => {
       el.classList.remove(PROTECTED_BRANCH_CLASS);
       el.removeAttribute('title');
+    });
+    document.querySelectorAll('.' + PROTECTED_MERGE_CLASS).forEach((el) => {
+      el.classList.remove(PROTECTED_MERGE_CLASS);
+      if (el.title === PROTECTED_MERGE_HINT) el.removeAttribute('title');
     });
   }
 
@@ -1635,6 +1667,7 @@
         takePipelineRequest();
         mount();
         renderProtectedBadges();
+        renderProtectedMerge();
       }
       else {
         unmount();

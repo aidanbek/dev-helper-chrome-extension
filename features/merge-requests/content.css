@@ -114,6 +114,31 @@
   box-shadow: inset 0 0 0 1px var(--gl-feedback-danger-icon-color, #dd2b0e) !important;
 }
 
+/* Кнопки мержа в защищённую ветку — красные (как btn-danger GitLab): видно, что мерж с подтверждением */
+.btn.glmrh-protected-merge {
+  color: #fff !important;
+  background-color: var(--gl-button-danger-primary-background-color-default, #dd2b0e) !important;
+  border-color: var(--gl-button-danger-primary-border-color-default, #c91c00) !important;
+  box-shadow: inset 0 0 0 1px var(--gl-button-danger-primary-border-color-default, #c91c00) !important;
+}
+
+.btn.glmrh-protected-merge:hover,
+.btn.glmrh-protected-merge:focus {
+  background-color: var(--gl-button-danger-primary-background-color-hover, #c91c00) !important;
+}
+
+.btn.glmrh-protected-merge .gl-icon,
+.btn.glmrh-protected-merge .gl-button-text {
+  color: inherit !important;
+}
+
+/* Пункт «Merge immediately» в дропдауне — красный текст */
+.glmrh-protected-merge:not(.btn),
+.glmrh-protected-merge:not(.btn) .gl-new-dropdown-item-text-wrapper,
+.glmrh-protected-merge:not(.btn) .gl-new-dropdown-item-content {
+  color: var(--gl-text-color-danger, #dd2b0e) !important;
+}
+
 /* Окно подтверждения мержа в защищённую ветку — в духе модалок GitLab */
 .glmrh-modal-backdrop {
   position: fixed;
