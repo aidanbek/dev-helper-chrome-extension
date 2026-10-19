@@ -280,6 +280,8 @@ code { background: #f0f0f0; padding: 1px 4px; border-radius: 3px; }
 /* Импорт и экспорт */
 .backup-actions { display: flex; gap: 8px; margin: 12px 0; }
 .backup-actions button { margin: 0; }
+.backup-url-row { margin: 0; }
+.backup-url-row input { flex: 1; }
 .backup-preview { margin-top: 16px; padding-top: 12px; border-top: 1px solid #e4e4e7; }
 .backup-feature { padding: 8px 0; border-bottom: 1px solid #f0f0f2; }
 .backup-details { margin: 4px 0 0 24px; color: #666; font-size: 13px; line-height: 1.6; word-break: break-word; }

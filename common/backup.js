@@ -25,6 +25,11 @@
   const FORMAT = 1;
   // Лимит chrome.storage.sync на один ключ (ключ + JSON значения)
   const ITEM_QUOTA = 8192;
+  // Загрузка по ссылке: сколько ждём ответа и какой файл ещё считаем настройками
+  const FETCH_TIMEOUT = 15000;
+  const MAX_FILE_SIZE = 256 * 1024;
+  // Ссылка последнего импорта по URL — не настройка фичи, в экспорт не попадает
+  const SOURCE_KEY = 'backup.source';
 
   function typeOf(value) {
     if (value === null) return 'null';
@@ -92,6 +97,72 @@
       throw new Error('В файле нет настроек фич');
     }
     return data;
+  }
+
+  // Ссылка на файл настроек (например, raw-файл в репозитории команды): http или https, без схемы — https.
+  // Ссылку на просмотр файла в GitLab (/-/blob/) переводим в raw (/-/raw/) — иначе придёт HTML-страница
+  function normalizeUrl(input) {
+    let value = String(input || '').trim();
+    if (!value) throw new Error('Укажите ссылку на файл настроек');
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) value = 'https://' + value;
+    let url;
+    try {
+      url = new URL(value);
+    } catch (e) {
+      throw new Error('Не похоже на ссылку: ' + value);
+    }
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+      throw new Error('Поддерживаются только ссылки http и https');
+    }
+    url.pathname = url.pathname.replace('/-/blob/', '/-/raw/');
+    return url.href;
+  }
+
+  // Текст файла по ссылке. Доступ к сайту должен быть уже выдан — иначе запрос упрётся в CORS.
+  // Куки сайта уходят с запросом: приватный файл GitLab загрузится, если в браузере выполнен вход
+  async function fetchText(url) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+    try {
+      let response;
+      try {
+        response = await fetch(url, { credentials: 'include', cache: 'no-store', signal: controller.signal });
+      } catch (e) {
+        if (e.name === 'AbortError') throw new Error('Сайт не ответил за ' + FETCH_TIMEOUT / 1000 + ' секунд');
+        throw new Error('Не удалось загрузить файл: сайт недоступен или нет доступа к нему');
+      }
+      if (response.status === 401 || response.status === 403) {
+        throw new Error('Нет доступа к файлу (HTTP ' + response.status + ') — войдите на сайт в этом браузере');
+      }
+      if (response.status === 404) {
+        throw new Error('Файл не найден (HTTP 404). GitLab отвечает так и на приватный файл, если вход не выполнен');
+      }
+      if (!response.ok) throw new Error('Сайт ответил HTTP ' + response.status);
+      // Редирект на страницу входа или ссылка на страницу просмотра файла вместо самого файла
+      if (/text\/html/i.test(response.headers.get('content-type') || '')) {
+        throw new Error('Вместо файла пришла HTML-страница — нужен вход на сайт или ссылка не на сам файл (raw)');
+      }
+      if (Number(response.headers.get('content-length')) > MAX_FILE_SIZE) {
+        throw new Error('Файл больше ' + MAX_FILE_SIZE / 1024 + ' КБ — это не настройки Dev Helper');
+      }
+      const text = await response.text();
+      if (text.length > MAX_FILE_SIZE) {
+        throw new Error('Файл больше ' + MAX_FILE_SIZE / 1024 + ' КБ — это не настройки Dev Helper');
+      }
+      return text;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // { url, appliedAt } последнего импорта по ссылке или null
+  async function getSource() {
+    const items = await chrome.storage.sync.get(SOURCE_KEY);
+    return items[SOURCE_KEY] || null;
+  }
+
+  function setSource(url) {
+    return chrome.storage.sync.set({ [SOURCE_KEY]: { url, appliedAt: new Date().toISOString() } });
   }
 
   // Списки при «дополнить»: сначала текущие, потом новые из файла, без повторов
@@ -189,5 +260,17 @@
     return DevHelper.storage.setFeatures(values);
   }
 
-  DevHelper.backup = { FORMAT, build, stringify, parse, plan, missingHosts, apply };
+  DevHelper.backup = {
+    FORMAT,
+    build,
+    stringify,
+    parse,
+    plan,
+    missingHosts,
+    apply,
+    normalizeUrl,
+    fetchText,
+    getSource,
+    setSource
+  };
 })();

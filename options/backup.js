@@ -1,4 +1,4 @@
-// Раздел «Импорт и экспорт» страницы настроек: файл JSON и буфер обмена. Логика формата — common/backup.js.
+// Раздел «Импорт и экспорт» страницы настроек: файл JSON, буфер обмена и загрузка по ссылке. Логика формата — common/backup.js.
 // Раздел не фича: без переключателя «Включено» и без кнопки «Сохранить» — импорт пишет сразу, после превью.
 (() => {
   'use strict';
@@ -21,12 +21,20 @@
     '</fieldset>' +
     '<fieldset>' +
     '<legend>Импорт</legend>' +
-    '<p class="hint hint-top">Файл или текст экспорта Dev Helper. Сначала покажем, что изменится, — запись только ' +
+    '<p class="hint hint-top">Файл, ссылка или текст экспорта Dev Helper. Сначала покажем, что изменится, — запись только ' +
     'по кнопке «Применить». Настройки, которых нет в файле, не меняются.</p>' +
     '<div class="backup-actions">' +
     '<button type="button" class="secondary" data-action="pick">Выбрать файл…</button>' +
     '<input type="file" accept=".json,application/json" hidden>' +
     '</div>' +
+    '<label for="backup-url">или загрузите по ссылке</label>' +
+    '<div class="row backup-url-row"><input type="url" id="backup-url" spellcheck="false" ' +
+    'placeholder="https://gitlab.example.com/group/repo/-/raw/main/dev-helper.json">' +
+    '<button type="button" class="secondary" data-action="fetch">Загрузить</button></div>' +
+    '<p class="hint">Например, общий файл команды в репозитории — Chrome спросит доступ к сайту. ' +
+    'Приватный файл GitLab загрузится, если вы вошли в GitLab в этом браузере. ' +
+    'Ссылка запоминается: чтобы подтянуть новую версию, нажмите «Загрузить» ещё раз.</p>' +
+    '<p class="hint backup-source" hidden></p>' +
     '<label for="backup-text">или вставьте текст</label>' +
     '<textarea id="backup-text" rows="5" spellcheck="false" placeholder="{ &quot;app&quot;: &quot;dev-helper&quot;, … }"></textarea>' +
     '<div class="backup-actions">' +
@@ -65,11 +73,17 @@
     body.innerHTML = TEMPLATE;
     const fileInput = body.querySelector('input[type="file"]');
     const textArea = body.querySelector('#backup-text');
+    const urlInput = body.querySelector('#backup-url');
+    const fetchButton = body.querySelector('[data-action="fetch"]');
+    const sourceHint = body.querySelector('.backup-source');
     const mergeInput = body.querySelector('#backup-merge');
     const preview = body.querySelector('.backup-preview');
 
     // Последний разобранный файл: при смене «дополнять списки» превью пересчитывается
     let data = null;
+    // Ссылка, с которой загружен файл, — запоминается после «Применить»
+    let source = null;
+    let lastSource = null;
     // Номер отрисовки превью: если пересчёт запустили снова (сменили галочку), старый результат не рисуем
     let previewRun = 0;
 
@@ -104,6 +118,7 @@
       }
 
       const meta = [];
+      if (source) meta.push('загружено с ' + new URL(source).host);
       if (planned.kind === 'team') meta.push('файл «для команды» — без личных настроек');
       if (planned.extensionVersion) meta.push('экспорт из версии ' + planned.extensionVersion);
       if (meta.length) preview.append(el('p', 'hint hint-top', meta.join('; ')));
@@ -171,6 +186,10 @@
           .catch(() => false)
           .then(async (granted) => {
             await DevHelper.backup.apply(planned, ids);
+            if (source) {
+              await DevHelper.backup.setSource(source);
+              await renderSource();
+            }
             await ctx.reload();
             data = null;
             preview.hidden = true;
@@ -186,17 +205,83 @@
       preview.append(note, applyButton);
     }
 
-    function load(text) {
+    function showError(message) {
+      data = null;
+      previewRun++;
+      preview.hidden = false;
+      preview.textContent = '';
+      preview.append(el('p', 'backup-error', message));
+    }
+
+    // from — ссылка, если текст загружен по ней
+    function load(text, from) {
+      source = from || null;
       try {
         data = DevHelper.backup.parse(text);
       } catch (e) {
-        data = null;
-        preview.hidden = false;
-        preview.textContent = '';
-        preview.append(el('p', 'backup-error', e.message));
+        showError(e.message);
         return;
       }
       showPreview();
+    }
+
+    function loadUrl() {
+      let url;
+      try {
+        url = DevHelper.backup.normalizeUrl(urlInput.value);
+      } catch (e) {
+        showError(e.message);
+        return;
+      }
+      urlInput.value = url;
+      const host = DevHelper.sites.normalizeHost(url);
+      if (!host) {
+        showError('Не похоже на ссылку: ' + url);
+        return;
+      }
+      // Без доступа к сайту запрос упрётся в CORS. permissions.request — только из обработчика клика, до любых await
+      fetchButton.disabled = true;
+      chrome.permissions.request({ origins: [DevHelper.sites.originPattern(host)] })
+        .catch(() => false)
+        .then(async (granted) => {
+          if (!granted) {
+            showError('Доступ к ' + host + ' не выдан — загрузить файл не получится');
+            return;
+          }
+          ctx.setStatus('Загружаем…');
+          let text;
+          try {
+            text = await DevHelper.backup.fetchText(url);
+          } catch (e) {
+            ctx.setStatus('');
+            showError(e.message);
+            return;
+          }
+          ctx.setStatus('');
+          load(text, url);
+        })
+        .finally(() => {
+          fetchButton.disabled = false;
+        });
+    }
+
+    // Подсказка о последнем импорте — пока в поле та же ссылка
+    function renderSourceHint() {
+      const same = !!lastSource && urlInput.value.trim() === lastSource.url;
+      sourceHint.hidden = !same;
+      if (same) {
+        sourceHint.textContent = 'Последний импорт по этой ссылке — ' + new Date(lastSource.appliedAt).toLocaleString('ru');
+      }
+    }
+
+    async function renderSource() {
+      try {
+        lastSource = await DevHelper.backup.getSource();
+      } catch (e) {
+        lastSource = null;
+      }
+      if (lastSource && !urlInput.value) urlInput.value = lastSource.url;
+      renderSourceHint();
     }
 
     body.addEventListener('click', (event) => {
@@ -206,6 +291,7 @@
       else if (action.dataset.action === 'copy') exportTo('clipboard');
       else if (action.dataset.action === 'pick') fileInput.click();
       else if (action.dataset.action === 'parse') load(textArea.value);
+      else if (action.dataset.action === 'fetch') loadUrl();
     });
 
     fileInput.addEventListener('change', async () => {
@@ -217,14 +303,20 @@
     mergeInput.addEventListener('change', () => {
       if (data) showPreview();
     });
+
+    urlInput.addEventListener('input', renderSourceHint);
+    urlInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') loadUrl();
+    });
+    renderSource();
   }
 
   DevHelper.backupPage = {
     slug: 'backup',
     title: 'Импорт и экспорт',
     description:
-      'Настройки всех фич одним JSON — файлом или через буфер обмена: резервная копия, перенос в другой браузер, ' +
-      'общие правила для команды.',
+      'Настройки всех фич одним JSON — файлом, через буфер обмена или по ссылке: резервная копия, ' +
+      'перенос в другой браузер, общие правила для команды.',
     build
   };
 })();
