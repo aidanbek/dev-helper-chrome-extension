@@ -27,6 +27,7 @@ Merge requests (GitLab, включая self-hosted):
 • Фильтр «только мои MR».
 • Кнопка «Открыть задачу в Jira» по ключу задачи из ветки или названия MR.
 • Кнопка «Создать MR на stage», когда MR готов: не Draft, без конфликтов, с апрувами и без нерешённых тредов.
+• Кнопки префиксов комментариев (blocking:, nit: — свои, со своими цветами): префикс в начало комментария в один клик.
 
 Задачи Jira (Jira Cloud):
 • Кнопка «Залить на stage» в задаче в статусе «Тестирование»: открывает MR из поля задачи,
@@ -49,7 +50,7 @@ Merge requests (GitLab, включая self-hosted):
 • Пункты в контекстном меню страницы и ссылок на неё, горячая клавиша Alt+Shift+O.
 • Доступ к сайту не нужен — адрес страницы передаёт сам Chrome по вашему действию.
 
-Импорт и экспорт настроек — файлом или через буфер обмена: резервная копия или общие правила для команды.
+Импорт и экспорт настроек — файлом, через буфер обмена или по ссылке: резервная копия или общие правила для команды.
 
 Работает только на сайтах, которые вы сами добавили в настройках: доступ запрашивается к каждому сайту отдельно.
 Никаких данных не собирается: настройки хранятся в вашем браузере, страницы обрабатываются локально.
@@ -70,6 +71,7 @@ Merge requests (GitLab, including self-hosted):
 • "Only my MRs" filter.
 • "Open Jira issue" button using the issue key from the branch or MR title.
 • "Create MR to stage" button once the MR is ready: not a Draft, no conflicts, approved, no unresolved threads.
+• Comment prefix buttons (blocking:, nit: — your own, in your own colors): put a prefix at the start of a comment in one click.
 
 Jira issues (Jira Cloud):
 • "Deploy to stage" button on issues in testing: opens the MR from the issue field, checks it
@@ -92,10 +94,22 @@ Redirects:
 • Items in the context menu of the page and of links to it, plus the Alt+Shift+O hotkey.
 • No site access needed — Chrome passes the page URL itself on your action.
 
-Settings import and export — as a file or via the clipboard: a backup or shared rules for your team.
+Settings import and export — as a file, via the clipboard or from a URL: a backup or shared rules for your team.
 
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
+
+### Что нового в 1.4.0 / What's new in 1.4.0
+
+RU:
+• Merge requests: кнопки префиксов комментариев — ряд над кнопками формы комментария ставит префикс
+  (blocking:, nit: и т. п.; список и цвета — в настройках) в начало комментария, повторный клик убирает.
+• Импорт настроек по ссылке — например, общего файла команды в репозитории GitLab; с тем же превью перед записью.
+
+EN:
+• Merge requests: comment prefix buttons — a row above the comment form buttons puts a prefix
+  (blocking:, nit: etc.; the list and colors are set in the settings) at the start of the comment; click again to remove it.
+• Settings import from a URL — e.g. a team's shared file in a GitLab repository, with the same preview before writing.
 
 ### Что нового в 1.3.1 / What's new in 1.3.1
 
@@ -159,8 +173,9 @@ from the current page to a related one (e.g. its admin page).
 
 **storage** — EN: Stores the user's settings (text template, project → Telegram topic / Jira URL / stage branch rules,
 username filter, Jira status, labels and field names, required release labels and the MR field name,
-"page → link" redirect rules) and syncs them across the user's devices. The user can export these settings
-to a file or the clipboard and import them back; nothing is sent anywhere.
+"page → link" redirect rules, comment prefixes and their colors) and syncs them across the user's devices.
+The user can export these settings to a file or the clipboard and import them back from a file, pasted text
+or a URL the user enters; nothing is sent anywhere.
 
 **scripting** — EN: Registers each feature's content script (`chrome.scripting.registerContentScripts`) only on sites
 the user has added in the settings and granted access to. No code is injected anywhere else.
@@ -181,6 +196,8 @@ from the same origin to detect merge conflicts. On granted Jira sites it runs on
 the issue status, labels and the merge request link field to show its buttons, and on a release page requests
 the labels, status and the MR link field of the release's issues (plus the field list to find that field) from the same
 Jira site to filter the work items list and show MR links in it. Removing a site revokes its access.
+When the user imports settings from a URL, the extension requests access to that URL's site at that moment
+and downloads the settings file from it (with the site's cookies, so a private file can be read); nothing is sent to it.
 
 **Remote code** — No, all code is included in the package.
 
@@ -194,6 +211,14 @@ Jira site to filter the work items list and show MR links in it. Removing a site
 
 1. Поднять `version` в `manifest.json` (Web Store не принимает повторно ту же версию).
 2. `./scripts/build.sh` → загрузить `dist/dev-helper-<version>.zip`.
+
+### Для 1.4.0 в Developer Dashboard
+
+- Новых разрешений нет. Permission justification — обновить **storage** и **Host permissions** из этого файла
+  (префиксы комментариев, импорт по ссылке).
+- Privacy policy — опубликованный `PRIVACY.md` должен быть версии от 2026-10-19.
+- Description — дописать строку про префиксы комментариев и «по ссылке» в строке импорта (тексты выше),
+  при желании — блок «Что нового в 1.4.0».
 
 ### Для 1.3.1 в Developer Dashboard
 
