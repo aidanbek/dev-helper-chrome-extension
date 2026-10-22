@@ -314,7 +314,7 @@
     }
   }
 
-  // Чипы: метки задач релиза (всех, не только показанных в списке) с числом задач (частые — первыми), затем «без меток» и «без обязательных меток».
+  // Чипы: метки задач релиза (всех, не только показанных в списке) с числом задач (обязательные — первыми, внутри групп частые — первыми), затем «без меток» и «без обязательных меток».
   // Служебные чипы показываем и с нулём — ноль тоже ответ: все задачи размечены
   function chipsFor(keys, required) {
     const counts = new Map();
@@ -327,8 +327,8 @@
       if (!hasRequired(labels, required)) noRequired++;
     });
     const chips = Array.from(counts)
-      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-      .map(([label, count]) => ({ label, text: label, count, required: required.includes(normalize(label)) }));
+      .map(([label, count]) => ({ label, text: label, count, required: required.includes(normalize(label)) }))
+      .sort((a, b) => b.required - a.required || b.count - a.count || a.label.localeCompare(b.label));
     chips.push({ label: NO_LABELS, text: 'без меток', count: noLabels, special: true });
     if (required.length) {
       chips.push({ label: NO_REQUIRED, text: 'без обязательных меток', count: noRequired, special: true });
