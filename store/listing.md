@@ -103,6 +103,14 @@ Settings import and export — as a file, via the clipboard or from a URL: a bac
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
 
+### Что нового в 1.5.1 / What's new in 1.5.1
+
+RU:
+• Релизы Jira: обязательные метки в панели фильтра показываются первыми.
+
+EN:
+• Jira releases: required labels are shown first in the filter panel.
+
 ### Что нового в 1.5.0 / What's new in 1.5.0
 
 RU:
@@ -227,6 +235,11 @@ and downloads the settings file from it (with the site's cookies, so a private f
 
 1. Поднять `version` в `manifest.json` (Web Store не принимает повторно ту же версию).
 2. `./scripts/build.sh` → загрузить `dist/dev-helper-<version>.zip`.
+
+### Для 1.5.1 в Developer Dashboard
+
+- Разрешения и обработка данных не менялись — Single purpose, Permission justification и Privacy policy оставить как есть.
+- Description — при желании дописать блок «Что нового в 1.5.1» (тексты выше).
 
 ### Для 1.5.0 в Developer Dashboard
 
