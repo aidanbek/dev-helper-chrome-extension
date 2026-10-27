@@ -20,6 +20,7 @@
       js: [
         'common/core.js',
         'common/storage.js',
+        'common/jira-api.js',
         'common/clipboard.js',
         'common/label-filter.js',
         'features/jira-release/feature.js',

@@ -49,19 +49,8 @@
 
   // ---------- загрузка ----------
 
-  async function getJson(url) {
-    const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
-    if (!response.ok) throw new Error('HTTP ' + response.status);
-    return response.json();
-  }
-
   async function fetchLabels(keys) {
-    const params = new URLSearchParams({
-      jql: 'key in (' + keys.join(', ') + ')',
-      fields: 'labels',
-      maxResults: String(keys.length)
-    });
-    const data = await getJson('/rest/api/3/search/jql?' + params);
+    const data = await DevHelper.jiraApi.search('key in (' + keys.join(', ') + ')', 'labels', keys.length);
     const found = new Map();
     (data.issues || []).forEach((issue) => found.set(issue.key, (issue.fields && issue.fields.labels) || []));
     return found;

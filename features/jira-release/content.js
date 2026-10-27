@@ -56,27 +56,13 @@
     return m ? m[1] : null;
   }
 
-  async function getJson(url) {
-    const response = await fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
-    if (!response.ok) throw new Error('HTTP ' + response.status);
-    return response.json();
-  }
-
-  // id поля по названию, как в задаче («Merge Request» → customfield_10050); null — такого поля нет
-  async function fieldId(name) {
-    const fields = await getJson('/rest/api/3/field');
-    const field = (fields || []).find((f) => normalize(f.name) === normalize(name));
-    return field ? field.id : null;
-  }
-
   function mrUrlsIn(value) {
     if (value == null) return [];
     const text = typeof value === 'string' ? value : JSON.stringify(value);
     return Array.from(new Set(text.match(MR_RE) || []));
   }
 
-  // Все задачи версии с метками, названием и, если нужно, полем MR; новый поиск Jira Cloud (/search/jql)
-  // листается по nextPageToken
+  // Все задачи версии с метками, названием и, если нужно, полем MR — постранично
   async function fetchIssues(id, mrFieldId) {
     const labels = new Map();
     const mrs = new Map();
@@ -85,9 +71,7 @@
     let token = '';
     for (let page = 0; page < MAX_PAGES; page++) {
       const fields = mrFieldId ? 'labels,summary,status,' + mrFieldId : 'labels,summary';
-      const params = new URLSearchParams({ jql: 'fixVersion = ' + id, fields, maxResults: String(PAGE_SIZE) });
-      if (token) params.set('nextPageToken', token);
-      const data = await getJson('/rest/api/3/search/jql?' + params);
+      const data = await DevHelper.jiraApi.search('fixVersion = ' + id, fields, PAGE_SIZE, token);
       (data.issues || []).forEach((issue) => {
         const values = issue.fields || {};
         labels.set(issue.key, values.labels || []);
@@ -108,7 +92,7 @@
     let mrFieldId = null;
     let note = '';
     if (settings.rowMrLinks) {
-      mrFieldId = await fieldId(fieldName);
+      mrFieldId = await DevHelper.jiraApi.fieldId(fieldName);
       if (!mrFieldId) note = 'Нет поля «' + fieldName + '» — ссылки на MR не показаны';
     }
     return { ...(await fetchIssues(id, mrFieldId)), note };

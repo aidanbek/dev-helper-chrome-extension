@@ -567,6 +567,7 @@ common/
   storage.js                   настройки фичи в chrome.storage.sync (ключи с префиксом фичи)
   sites.js                     адреса сайтов: нормализация, шаблоны доступа и страниц фичи
   clipboard.js                 запись text/plain + text/html в буфер
+  jira-api.js                  REST API Jira того же сайта: запрос JSON, поиск задач по JQL, id поля по названию
   label-filter.js              фильтр задач по меткам для «Задач Jira» и «Релизов Jira»: выбор, отбор, панель, метки в строках
   label-filter.css             стили панели фильтра, чипов и меток в строках
   telegram.js                  t.me → tg://, открытие Telegram
