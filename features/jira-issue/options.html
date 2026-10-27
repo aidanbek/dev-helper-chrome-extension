@@ -45,3 +45,25 @@
   <input type="text" id="jira-labelsField" data-field="labelsField" placeholder="Labels" spellcheck="false">
   <p class="hint">Название поля, как в задаче. Пусто — «Labels».</p>
 </fieldset>
+<fieldset>
+  <legend>Метки в таблицах задач</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="jira-rowLabels" data-field="rowLabels">
+    <label for="jira-rowLabels">Показывать метки под названием задачи в таблицах на странице задачи</label>
+  </div>
+  <p class="hint">
+    В таблицах на странице задачи (/browse/KEY) — например, Child work items эпика — под названием каждой задачи все её метки:
+    сначала обязательные из настроек фичи «Релизы Jira» (выделены), затем остальные, внутри групп — по алфавиту.
+    Клик по метке работает как клик по её чипу в фильтре. Метки берутся запросом к API Jira того же сайта под вашей сессией.
+    В поиске, на досках, в модальных окнах задач и на странице релиза строки не меняются.
+  </p>
+  <div class="checkbox">
+    <input type="checkbox" id="jira-labelsFilter" data-field="labelsFilter">
+    <label for="jira-labelsFilter">Фильтр по меткам над таблицей</label>
+  </div>
+  <p class="hint">
+    Чипы меток задач таблицы с числом задач, «без меток» и «без обязательных меток». Клик — показать задачи
+    с меткой, Shift+клик — скрыть; несколько меток — «любая из выбранных» или «все выбранные». Выбор сбрасывается
+    при переходе на другую задачу.
+  </p>
+</fieldset>
