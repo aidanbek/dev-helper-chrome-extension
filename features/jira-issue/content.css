@@ -60,7 +60,7 @@
 }
 
 /* Метки задачи под названием в строке таблицы задач. Ячейке-flex разрешаем перенос — блок на всю ширину
-   встаёт под названием и в обычной ячейке, и во flex-ряду */
+   встаёт под названием и в обычной ячейке, и во flex-ряду. Сами метки и фильтр — common/label-filter.css */
 [data-dhj-labels-cell] {
   flex-wrap: wrap !important;
 }
@@ -76,127 +76,7 @@
   padding-bottom: 8px;
 }
 
-.dhj-label {
-  padding: 0 6px;
-  border-radius: var(--ds-border-radius, 3px);
-  background: var(--ds-background-neutral-subtle-hovered, #091e420f);
-  color: var(--ds-text-subtlest, #626f86) !important;
-  font-size: 12px;
-  line-height: 18px;
-  white-space: nowrap;
-  text-decoration: none !important;
-}
-
-.dhj-label:hover {
-  background: var(--ds-background-neutral-hovered, #091e4224);
-}
-
-/* Обязательная метка (настройки «Релизов Jira») — чуть заметнее остальных, как в строках релиза */
-.dhj-label.dhj-required {
-  color: var(--ds-text-subtle, #44546f) !important;
-  font-weight: 500;
-}
-
-/* Метки в строке кликабельны: выбранная — в цвет выбранного чипа, исключённая — зачёркнута */
-.dhj-label {
-  cursor: pointer;
-}
-
-.dhj-label.dhj-selected {
-  background: var(--ds-background-discovery, #f3f0ff);
-  color: var(--ds-text-discovery, #5e4db2) !important;
-}
-
-.dhj-label.dhj-excluded {
-  color: var(--ds-text-danger, #ae2e24) !important;
-  text-decoration: line-through !important;
-}
-
-/* Фильтр по меткам над таблицей — как в «Релизах Jira» */
-.dhj-filter {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  box-sizing: border-box;
-  margin: 8px 0;
-  padding: 8px 12px;
-  border: var(--ds-border-width, 1px) solid var(--ds-border-discovery, #8f7ee7);
-  border-left-width: 4px;
-  border-radius: var(--ds-border-radius-200, 8px);
-  background: var(--ds-background-discovery, #f3f0ff);
-}
-
-.dhj-filter-title {
-  color: var(--ds-text-subtle, #44546f);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.dhj-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.dhj-chip {
-  height: 24px;
-  padding: 0 8px;
-  border: var(--ds-border-width, 1px) solid var(--ds-border, #091e4224);
-  border-radius: var(--ds-border-radius, 3px);
-  background: var(--ds-surface, #fff);
-  color: var(--ds-text, #172b4d);
-  font: inherit;
-  font-size: 12px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.dhj-chip:hover {
-  background: var(--ds-background-neutral-subtle-hovered, #091e420f);
-}
-
-.dhj-chip.dhj-selected {
-  border-color: var(--ds-background-discovery-bold, #6e5dc6);
-  background: var(--ds-background-discovery-bold, #6e5dc6);
-  color: var(--ds-text-inverse, #fff);
-}
-
-/* Обязательная метка — рамка в цвет выбранного чипа */
-.dhj-chip.dhj-required:not(.dhj-selected) {
-  border-color: var(--ds-border-discovery, #8f7ee7);
-  font-weight: 600;
-}
-
-/* «без меток», «без обязательных меток» — служебные, отделены от меток */
-.dhj-chip.dhj-special:not(.dhj-selected) {
-  border-style: dashed;
-}
-
-/* Исключённая метка (Shift+клик) — задачи с ней скрыты */
-.dhj-chip.dhj-excluded {
-  border-color: var(--ds-border-danger, #e2483d);
-  background: var(--ds-background-danger, #ffeceb);
-  color: var(--ds-text-danger, #ae2e24);
-  text-decoration: line-through;
-}
-
-/* Переключатель «ИЛИ / И» и «Сбросить» — не метки */
-.dhj-chip.dhj-mode {
-  border-style: dotted;
-  color: var(--ds-text-subtle, #44546f);
-}
-
-.dhj-chip[data-reset] {
-  border-style: dashed;
-  color: var(--ds-text-subtle, #44546f);
-}
-
-.dhj-filter-status {
-  color: var(--ds-text-subtle, #44546f);
-  font-size: 12px;
-}
-
+/* Строка не подходит под фильтр меток */
 [data-dhj-hidden] {
   display: none !important;
 }

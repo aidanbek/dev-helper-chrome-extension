@@ -9,17 +9,13 @@
   const log = DevHelper.log;
 
   const BAR_CLASS = 'dhr-labels';
-  const CHIP_CLASS = 'dhr-chip';
-  const STATUS_CLASS = 'dhr-labels-status';
   const ROW_LABELS_CLASS = 'dhr-row-labels';
   const ROW_MRS_CLASS = 'dhr-row-mrs';
   // Наши блоки в строках: в них не ищем ключи задач и название
   const OWN_SELECTOR = '.' + BAR_CLASS + ', .' + ROW_LABELS_CLASS + ', .' + ROW_MRS_CLASS;
   // Атрибут, а не класс: React перезаписывает className строк при перерисовке, чужие атрибуты не трогает
   const HIDDEN_ATTR = 'data-dhr-hidden';
-  // Псевдометки чипов «без меток» и «без обязательных меток»: в метках Jira пробелов не бывает
-  const NO_LABELS = ' none';
-  const NO_REQUIRED = ' no-required';
+  const { NO_LABELS, NO_REQUIRED, normalize, isRequired, parseRequired, setHidden } = DevHelper.labelFilter;
 
   const VERSION_RE = /\/versions\/(\d+)/;
   const KEY_RE = /^[A-Z][A-Z0-9_]*-\d+$/;
@@ -35,9 +31,7 @@
   // Сколько держится «Скопировано» на кнопке копирования
   const COPIED_DELAY = 1500;
 
-  // Состояние текущей версии: метки задач, выбранные чипы, загрузка.
-  // selected: метка → 'include' (показать задачи с ней) или 'exclude' (скрыть задачи с ней);
-  // mode — как сочетать несколько include: 'or' — хотя бы одна, 'and' — все
+  // Состояние текущей версии: метки задач, выбранные чипы, загрузка
   let version = null;
   let labelsByKey = null;
   // Ключ → ссылки на MR из поля задачи; mrNote — почему ссылок нет (нет поля с таким названием)
@@ -52,8 +46,7 @@
   let loading = false;
   let error = '';
   let fetchedAt = 0;
-  let selected = new Map();
-  let mode = 'or';
+  const filter = DevHelper.labelFilter.create(() => sync());
   let copiedUntil = 0;
   // Ключи со ссылками на странице, которых не было в ответе: по каждому перезапрашиваем не больше одного раза
   let checked = new Set();
@@ -200,48 +193,13 @@
     return el;
   }
 
-  function normalize(text) {
-    return (text || '').trim().toLowerCase();
-  }
-
   // Обязательные метки из настроек: через запятую или пробел, без учёта регистра
   function requiredLabels() {
-    const value = (settings && settings.requiredLabels) || '';
-    return value.split(/[\s,]+/).map(normalize).filter(Boolean);
+    return parseRequired(settings && settings.requiredLabels);
   }
 
-  function hasRequired(labels, required) {
-    return labels.some((label) => required.includes(normalize(label)));
-  }
-
-  // Подходит ли задача под чип: обычная метка или служебные «без меток» / «без обязательных меток»
-  function hasChip(labels, chip, required) {
-    if (chip === NO_LABELS) return !labels.length;
-    if (chip === NO_REQUIRED) return !hasRequired(labels, required);
-    return labels.includes(chip);
-  }
-
-  function chipsBy(state) {
-    return Array.from(selected).filter(([, value]) => value === state).map(([chip]) => chip);
-  }
-
-  // Исключённые чипы скрывают задачу всегда; из включённых нужна хотя бы одна («ИЛИ») или все («И»)
   function matches(key, required) {
-    if (!selected.size) return true;
-    const labels = labelsByKey.get(key);
-    const test = (chip) => hasChip(labels, chip, required);
-    if (chipsBy('exclude').some(test)) return false;
-    const included = chipsBy('include');
-    if (!included.length) return true;
-    return mode === 'and' ? included.every(test) : included.some(test);
-  }
-
-  // Клик — показать задачи с меткой, Shift+клик — скрыть; повторный такой же клик снимает выбор
-  function toggle(label, exclude) {
-    const want = exclude ? 'exclude' : 'include';
-    if (selected.get(label) === want) selected.delete(label);
-    else selected.set(label, want);
-    sync();
+    return filter.matches(labelsByKey.get(key), required);
   }
 
   // ---------- поиск Jira ----------
@@ -254,7 +212,7 @@
   function requiredJql(required) {
     const variants = new Set(required);
     labelsByKey.forEach((labels) => labels.forEach((label) => {
-      if (required.includes(normalize(label))) variants.add(label);
+      if (isRequired(label, required)) variants.add(label);
     }));
     return '(' + Array.from(variants).map(jqlString).join(', ') + ')';
   }
@@ -272,9 +230,9 @@
   // Тот же отбор, что в фильтре, — для поиска Jira, где видны все задачи и колонки
   function searchUrl(required) {
     const parts = ['fixVersion = ' + version];
-    const included = chipsBy('include').map((chip) => chipJql(chip, required, false));
-    if (included.length) parts.push('(' + included.join(mode === 'and' ? ' AND ' : ' OR ') + ')');
-    chipsBy('exclude').forEach((chip) => parts.push(chipJql(chip, required, true)));
+    const included = filter.chipsBy('include').map((chip) => chipJql(chip, required, false));
+    if (included.length) parts.push('(' + included.join(filter.mode === 'and' ? ' AND ' : ' OR ') + ')');
+    filter.chipsBy('exclude').forEach((chip) => parts.push(chipJql(chip, required, true)));
     return location.origin + '/issues/?jql=' + encodeURIComponent(parts.join(' AND ') + ' ORDER BY key');
   }
 
@@ -314,40 +272,8 @@
     }
   }
 
-  // Чипы: метки задач релиза (всех, не только показанных в списке) с числом задач (обязательные — первыми, внутри групп частые — первыми), затем «без меток» и «без обязательных меток».
-  // Служебные чипы показываем и с нулём — ноль тоже ответ: все задачи размечены
-  function chipsFor(keys, required) {
-    const counts = new Map();
-    let noLabels = 0;
-    let noRequired = 0;
-    keys.forEach((key) => {
-      const labels = labelsByKey.get(key);
-      labels.forEach((label) => counts.set(label, (counts.get(label) || 0) + 1));
-      if (!labels.length) noLabels++;
-      if (!hasRequired(labels, required)) noRequired++;
-    });
-    const chips = Array.from(counts)
-      .map(([label, count]) => ({ label, text: label, count, required: required.includes(normalize(label)) }))
-      .sort((a, b) => b.required - a.required || b.count - a.count || a.label.localeCompare(b.label));
-    chips.push({ label: NO_LABELS, text: 'без меток', count: noLabels, special: true });
-    if (required.length) {
-      chips.push({ label: NO_REQUIRED, text: 'без обязательных меток', count: noRequired, special: true });
-    }
-    return chips;
-  }
-
+  // Панель фильтра с кнопками копирования и поиска справа
   function buildBar() {
-    const bar = document.createElement('div');
-    bar.className = BAR_CLASS;
-    const title = document.createElement('span');
-    title.className = 'dhr-labels-title';
-    title.textContent = 'Метки:';
-    title.title = 'Клик по метке — показать задачи с ней, Shift+клик — скрыть задачи с ней';
-    const chips = document.createElement('div');
-    chips.className = 'dhr-chips';
-    const status = document.createElement('span');
-    status.className = STATUS_CLASS;
-
     const actions = document.createElement('div');
     actions.className = 'dhr-actions';
     const copy = document.createElement('button');
@@ -356,6 +282,9 @@
     copy.dataset.action = 'copy';
     copy.title = 'Скопировать задачи релиза под фильтром, в том числе ещё не показанные в списке: '
       + '«KEY — название», по строке на задачу';
+    copy.addEventListener('click', () => {
+      copyMatching().catch((e) => log('не удалось скопировать задачи:', e && e.message));
+    });
     const search = document.createElement('a');
     search.className = 'dhr-action';
     search.target = '_blank';
@@ -363,72 +292,17 @@
     search.textContent = 'Открыть в поиске';
     search.title = 'Тот же отбор в поиске Jira (JQL)';
     actions.append(copy, search);
-
-    bar.append(title, chips, status, actions);
-
-    bar.addEventListener('click', (event) => {
-      if (event.target.closest('[data-action="copy"]')) {
-        copyMatching().catch((e) => log('не удалось скопировать задачи:', e && e.message));
-        return;
-      }
-      const chip = event.target.closest('.' + CHIP_CLASS);
-      if (!chip) return;
-      if (chip.dataset.reset) {
-        selected.clear();
-        sync();
-      } else if (chip.dataset.mode) {
-        mode = mode === 'or' ? 'and' : 'or';
-        sync();
-      } else {
-        toggle(chip.dataset.label, event.shiftKey);
-      }
-    });
-    return bar;
+    return filter.buildBar(BAR_CLASS, [actions]);
   }
 
-  function buildChip(text, attrs) {
-    const chip = document.createElement('button');
-    chip.type = 'button';
-    chip.className = CHIP_CLASS;
-    Object.assign(chip.dataset, attrs);
-    chip.textContent = text;
-    return chip;
-  }
-
-  const CHIP_HINT = 'Клик — показать задачи с меткой, Shift+клик — скрыть';
-
-  // Чипы пересобираем только при изменении меток или выбора — иначе наш же MutationObserver зациклил бы sync
+  // Чипы — метки задач релиза (всех, не только показанных в списке)
   function renderBar(bar, chips, shown, total, onPage, required) {
-    const list = bar.querySelector('.dhr-chips');
-    const signature = JSON.stringify([chips, Array.from(selected), mode]);
-    if (list.dataset.signature !== signature) {
-      list.dataset.signature = signature;
-      list.replaceChildren(
-        ...chips.map((spec) => {
-          const state = selected.get(spec.label);
-          const chip = buildChip(spec.text + ' · ' + spec.count, { label: spec.label });
-          chip.classList.toggle('dhr-selected', state === 'include');
-          chip.classList.toggle('dhr-excluded', state === 'exclude');
-          chip.classList.toggle('dhr-special', !!spec.special);
-          chip.classList.toggle('dhr-required', !!spec.required);
-          chip.title = (spec.required ? 'Обязательная метка. ' : '') + CHIP_HINT;
-          chip.setAttribute('aria-pressed', String(!!state));
-          return chip;
-        })
-      );
-      if (chipsBy('include').length > 1) {
-        const toggleMode = buildChip(mode === 'and' ? 'все выбранные (И)' : 'любая из выбранных (ИЛИ)', { mode: '1' });
-        toggleMode.classList.add('dhr-mode');
-        toggleMode.title = 'Как сочетать выбранные метки — переключить';
-        list.append(toggleMode);
-      }
-      if (selected.size) list.append(buildChip('Сбросить', { reset: '1' }));
-    }
+    filter.renderBar(bar, chips);
     // Счётчики — по всем задачам релиза; в списке Jira их может быть меньше, пока он не догружен
     const parts = [];
-    if (selected.size) parts.push('Показано ' + shown + ' из ' + total);
+    if (filter.size) parts.push('Показано ' + shown + ' из ' + total);
     if (onPage < total) parts.push('в списке пока ' + onPage + ' из ' + total + ' — счётчики и копирование по всем');
-    setStatus(bar, parts.join('; '), false);
+    filter.setStatus(bar, parts.join('; '), false);
 
     const copy = bar.querySelector('[data-action="copy"]');
     const copyText = Date.now() < copiedUntil ? 'Скопировано: ' + shown : 'Скопировать задачи (' + shown + ')';
@@ -438,12 +312,6 @@
     const search = bar.querySelector('a.dhr-action');
     const href = searchUrl(required);
     if (search.getAttribute('href') !== href) search.setAttribute('href', href);
-  }
-
-  function setStatus(bar, text, isError) {
-    const status = bar.querySelector('.' + STATUS_CLASS);
-    if (status.textContent !== text) status.textContent = text;
-    status.classList.toggle('dhr-error', isError);
   }
 
   // Название задачи — листовой элемент строки с самым длинным текстом (ключ, статус, приоритет короче)
@@ -476,24 +344,10 @@
     if (!block) block = buildRowLabels();
     if (summary.nextElementSibling !== block) summary.insertAdjacentElement('afterend', block);
 
-    const states = labels.map((label) => selected.get(label) || '');
-    const signature = JSON.stringify([labels, required, states]);
+    const signature = JSON.stringify([labels, required, labels.map(filter.stateOf)]);
     if (block.dataset.signature === signature) return;
     block.dataset.signature = signature;
-    block.replaceChildren(
-      ...labels.map((label, i) => {
-        const chip = document.createElement('span');
-        chip.className = 'dhr-row-label';
-        chip.dataset.label = label;
-        chip.setAttribute('role', 'button');
-        chip.classList.toggle('dhr-required', required.includes(normalize(label)));
-        chip.classList.toggle('dhr-selected', states[i] === 'include');
-        chip.classList.toggle('dhr-excluded', states[i] === 'exclude');
-        chip.title = CHIP_HINT;
-        chip.textContent = label;
-        return chip;
-      })
-    );
+    block.replaceChildren(...labels.map((label) => filter.buildLabel(label, required)));
   }
 
   // Строка Jira целиком кликабельна (открывает задачу), а над названием Jira показывает тултип у курсора.
@@ -511,12 +365,7 @@
     const block = document.createElement('span');
     block.className = ROW_LABELS_CLASS;
     stopRowEvents(block);
-    block.addEventListener('click', (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const chip = event.target.closest('.dhr-row-label');
-      if (chip) toggle(chip.dataset.label, event.shiftKey);
-    });
+    block.addEventListener('click', filter.onLabelClick);
     return block;
   }
 
@@ -592,12 +441,6 @@
     return block;
   }
 
-  function setHidden(row, hidden) {
-    if (hidden === row.hasAttribute(HIDDEN_ATTR)) return;
-    if (hidden) row.setAttribute(HIDDEN_ATTR, '');
-    else row.removeAttribute(HIDDEN_ATTR);
-  }
-
   function mount() {
     const id = versionId();
     if (id !== version) {
@@ -609,8 +452,7 @@
       statusByKey = new Map();
       summaryByKey = new Map();
       mrNote = '';
-      selected = new Map();
-      mode = 'or';
+      filter.reset();
       checked = new Set();
       if (id) load(id);
     }
@@ -635,15 +477,12 @@
     // Выбранная метка могла пропасть из списка — не оставляем невидимый фильтр
     const required = requiredLabels();
     const keys = Array.from(labelsByKey.keys());
-    const chips = chipsFor(keys, required);
-    const present = new Set(chips.map((chip) => chip.label));
-    selected.forEach((state, label) => {
-      if (!present.has(label)) selected.delete(label);
-    });
+    const chips = filter.chipsFor(keys.map((key) => labelsByKey.get(key)), required);
+    filter.retain(new Set(chips.map((chip) => chip.label)));
 
     const shown = keys.filter((key) => matches(key, required)).length;
     rows.forEach((key, row) => {
-      setHidden(row, !matches(key, required));
+      setHidden(row, HIDDEN_ATTR, !matches(key, required));
       renderRowLabels(row, key, required, settings.rowLabels);
       renderRowMrs(row, key, settings.rowMrLinks);
     });
@@ -658,8 +497,8 @@
     });
 
     renderBar(bar, chips, shown, keys.length, new Set(rows.values()).size, required);
-    if (error) setStatus(bar, 'Не удалось обновить метки: ' + error, true);
-    else if (settings.rowMrLinks && mrNote) setStatus(bar, mrNote, true);
+    if (error) filter.setStatus(bar, 'Не удалось обновить метки: ' + error, true);
+    else if (settings.rowMrLinks && mrNote) filter.setStatus(bar, mrNote, true);
   }
 
   // Ключи со ссылками, которых нет в загруженных метках: задачу могли добавить в релиз после загрузки.

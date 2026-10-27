@@ -21,10 +21,11 @@
         'common/core.js',
         'common/storage.js',
         'common/clipboard.js',
+        'common/label-filter.js',
         'features/jira-release/feature.js',
         'features/jira-release/content.js'
       ],
-      css: ['features/jira-release/content.css']
+      css: ['common/label-filter.css', 'features/jira-release/content.css']
     },
     defaults: {
       enabled: true,

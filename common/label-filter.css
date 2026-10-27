@@ -1,0 +1,124 @@
+/* Фильтр задач по меткам — общий для «Задач Jira» и «Релизов Jira»: панель с чипами и метки в строках.
+   Цвета — токены дизайн-системы Atlassian (с фолбэками), тёмная тема подхватывается сама */
+.dhl-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  box-sizing: border-box;
+  margin: 8px 0;
+  padding: 8px 12px;
+  border: var(--ds-border-width, 1px) solid var(--ds-border-discovery, #8f7ee7);
+  border-left-width: 4px;
+  border-radius: var(--ds-border-radius-200, 8px);
+  background: var(--ds-background-discovery, #f3f0ff);
+}
+
+.dhl-bar-title {
+  color: var(--ds-text-subtle, #44546f);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.dhl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.dhl-chip {
+  height: 24px;
+  padding: 0 8px;
+  border: var(--ds-border-width, 1px) solid var(--ds-border, #091e4224);
+  border-radius: var(--ds-border-radius, 3px);
+  background: var(--ds-surface, #fff);
+  color: var(--ds-text, #172b4d);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dhl-chip:hover {
+  background: var(--ds-background-neutral-subtle-hovered, #091e420f);
+}
+
+.dhl-chip.dhl-selected {
+  border-color: var(--ds-background-discovery-bold, #6e5dc6);
+  background: var(--ds-background-discovery-bold, #6e5dc6);
+  color: var(--ds-text-inverse, #fff);
+}
+
+/* Обязательная метка — рамка в цвет выбранного чипа */
+.dhl-chip.dhl-required:not(.dhl-selected) {
+  border-color: var(--ds-border-discovery, #8f7ee7);
+  font-weight: 600;
+}
+
+/* «без меток», «без обязательных меток» — служебные, отделены от меток */
+.dhl-chip.dhl-special:not(.dhl-selected) {
+  border-style: dashed;
+}
+
+/* Исключённая метка (Shift+клик) — задачи с ней скрыты */
+.dhl-chip.dhl-excluded {
+  border-color: var(--ds-border-danger, #e2483d);
+  background: var(--ds-background-danger, #ffeceb);
+  color: var(--ds-text-danger, #ae2e24);
+  text-decoration: line-through;
+}
+
+/* Переключатель «ИЛИ / И» и «Сбросить» — не метки */
+.dhl-chip.dhl-mode {
+  border-style: dotted;
+  color: var(--ds-text-subtle, #44546f);
+}
+
+.dhl-chip[data-reset] {
+  border-style: dashed;
+  color: var(--ds-text-subtle, #44546f);
+}
+
+.dhl-status {
+  color: var(--ds-text-subtle, #44546f);
+  font-size: 12px;
+}
+
+.dhl-status.dhl-error {
+  color: var(--ds-text-danger, #ae2e24);
+  font-weight: 500;
+}
+
+/* Метка задачи в строке. Строка или ячейка Jira бывает ссылкой — цвет и подчёркивание перебиваем */
+.dhl-label {
+  padding: 0 6px;
+  border-radius: var(--ds-border-radius, 3px);
+  background: var(--ds-background-neutral-subtle-hovered, #091e420f);
+  color: var(--ds-text-subtlest, #626f86) !important;
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  text-decoration: none !important;
+  cursor: pointer;
+}
+
+.dhl-label:hover {
+  background: var(--ds-background-neutral-hovered, #091e4224);
+}
+
+/* Обязательная метка — чуть заметнее остальных, но тише чипов фильтра */
+.dhl-label.dhl-required {
+  color: var(--ds-text-subtle, #44546f) !important;
+  font-weight: 500;
+}
+
+/* Метки в строке кликабельны: выбранная — в цвет выбранного чипа, исключённая — зачёркнута */
+.dhl-label.dhl-selected {
+  background: var(--ds-background-discovery, #f3f0ff);
+  color: var(--ds-text-discovery, #5e4db2) !important;
+}
+
+.dhl-label.dhl-excluded {
+  color: var(--ds-text-danger, #ae2e24) !important;
+  text-decoration: line-through !important;
+}

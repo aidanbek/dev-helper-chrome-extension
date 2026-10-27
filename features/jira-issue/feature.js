@@ -22,11 +22,12 @@
       js: [
         'common/core.js',
         'common/storage.js',
+        'common/label-filter.js',
         'features/jira-issue/feature.js',
         'features/jira-issue/content.js',
         'features/jira-issue/labels.js'
       ],
-      css: ['features/jira-issue/content.css']
+      css: ['common/label-filter.css', 'features/jira-issue/content.css']
     },
     defaults: {
       enabled: true,

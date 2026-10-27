@@ -567,6 +567,8 @@ common/
   storage.js                   настройки фичи в chrome.storage.sync (ключи с префиксом фичи)
   sites.js                     адреса сайтов: нормализация, шаблоны доступа и страниц фичи
   clipboard.js                 запись text/plain + text/html в буфер
+  label-filter.js              фильтр задач по меткам для «Задач Jira» и «Релизов Jira»: выбор, отбор, панель, метки в строках
+  label-filter.css             стили панели фильтра, чипов и меток в строках
   telegram.js                  t.me → tg://, открытие Telegram
   rules.js                     правила «путь проекта → значение» (топики, Jira, ветка stage)
   redirects.js                 правила переходов «страница → ссылка»: разбор шаблонов, ссылки, match patterns меню
@@ -583,12 +585,12 @@ features/
     feature.js                 id, название, content script, настройки по умолчанию
     content.js                 кнопки «Залить на stage» и «Pipeline ветки» в задаче Jira
     labels.js                  метки под названием задачи и фильтр по меткам в таблицах на странице задачи
-    content.css                стили блока, кнопок и меток в таблицах
+    content.css                стили блока кнопок и места меток в таблицах
     options.html               фрагмент раздела настроек
   jira-release/
     feature.js                 id, название, content script, настройки по умолчанию
     content.js                 фильтр по меткам, метки и MR в строках, копирование и ссылка на поиск
-    content.css                стили панели и чипов
+    content.css                стили меток и MR в строках, кнопок действий на панели
     options.html               фрагмент раздела настроек
   redirects/
     feature.js                 id, название, настройки по умолчанию (без content script)
