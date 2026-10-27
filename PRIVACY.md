@@ -1,6 +1,6 @@
 # Политика конфиденциальности / Privacy Policy — Dev Helper
 
-_Последнее обновление / Last updated: 2026-10-19_
+_Последнее обновление / Last updated: 2026-10-27_
 
 ## Русский
 
@@ -22,7 +22,8 @@ Dev Helper не собирает, не хранит на внешних серв
 - **Сетевые запросы.** Расширение запрашивает `widget.json` текущего merge request у того же сервера,
   с которого открыта страница, чтобы узнать о конфликтах слияния. На странице релиза Jira расширение запрашивает
   у того же сайта Jira метки и статус задач релиза и ссылки на MR из поля задачи (и список полей, чтобы найти это поле),
-  чтобы показать фильтр по меткам и ссылки на MR в списке. При импорте по ссылке расширение по вашему действию
+  чтобы показать фильтр по меткам и ссылки на MR в списке. На странице задачи Jira расширение запрашивает у того же сайта
+  метки задач из таблиц на странице (например, дочерних задач эпика), чтобы показать их и фильтр по меткам. При импорте по ссылке расширение по вашему действию
   загружает файл настроек с указанного вами адреса (с куками этого сайта, чтобы открылся приватный файл);
   на этот адрес ничего не отправляется. Других запросов нет, аналитики и трекинга нет.
 - **Внешние ссылки.** По вашему действию расширение открывает указанные вами в настройках ссылки
@@ -49,7 +50,8 @@ Dev Helper does not collect user data, does not store it on external servers, an
 - **Network requests.** The extension requests the current merge request's `widget.json` from the same server
   the page was loaded from, to detect merge conflicts. On a Jira release page it requests the labels, status and the MR link field
   of the release's issues (and the field list, to find that field) from the same Jira site to show the labels filter
-  and MR links in the list. When importing from a URL, on your action the extension downloads the settings file
+  and MR links in the list. On a Jira issue page it requests the labels of the issues listed in the page's tables
+  (e.g. an epic's child issues) from the same Jira site to show them and the labels filter. When importing from a URL, on your action the extension downloads the settings file
   from the address you entered (with that site's cookies, so a private file can be opened); nothing is sent to it.
   No other requests are made; there is no analytics or tracking.
 - **External links.** On your action the extension opens links you configured in the settings (Telegram, Jira, "Redirects" links).

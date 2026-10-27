@@ -84,6 +84,8 @@ Jira issues (Jira Cloud):
   and goes straight to the MR-to-stage form — or tells you what's blocking it.
 • "Branch pipeline" button on issues with chosen labels: opens the latest pipeline of the MR source branch
   to start a preview environment.
+• Issue labels under the summary in tables on an issue page (an epic's Child work items): all of them,
+  required ones first; above the table — a labels filter, as on a release page.
 • Status, labels and the MR field name are configurable.
 
 Jira releases (Jira Cloud):
@@ -104,6 +106,18 @@ Settings import and export — as a file, via the clipboard or from a URL: a bac
 
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
+
+### Что нового в 1.6.0 / What's new in 1.6.0
+
+RU:
+• Задачи Jira: на странице задачи (например, в Child work items эпика) под названием каждой задачи — все её метки,
+  обязательные первыми; над таблицей — фильтр по меткам, как в релизе: чипы с числом задач, «без меток»,
+  «без обязательных меток», Shift+клик — исключить, «ИЛИ / И».
+
+EN:
+• Jira issues: on an issue page (e.g. an epic's Child work items) every issue shows all its labels under the summary,
+  required ones first; above the table — a labels filter, as on a release page: chips with issue counts, "no labels",
+  "no required labels", Shift+click to exclude, "any / all".
 
 ### Что нового в 1.5.1 / What's new in 1.5.1
 
@@ -219,7 +233,9 @@ so the list of sites can't be fixed in the manifest. The user adds their GitLab 
 site at that moment. On granted GitLab sites the content script runs only on merge request pages: it reads
 the MR title, URL, branches, author and approvals from the page and requests the MR's own `widget.json`
 from the same origin to detect merge conflicts. On granted Jira sites it runs only on issue and release pages: it reads
-the issue status, labels and the merge request link field to show its buttons, and on a release page requests
+the issue status, labels and the merge request link field to show its buttons; on an issue page requests the labels
+of the issues listed in its tables (e.g. an epic's child issues) from the same Jira site to show them and filter
+the table; and on a release page requests
 the labels, status and the MR link field of the release's issues (plus the field list to find that field) from the same
 Jira site to filter the work items list and show MR links in it. Removing a site revokes its access.
 When the user imports settings from a URL, the extension requests access to that URL's site at that moment
@@ -237,6 +253,14 @@ and downloads the settings file from it (with the site's cookies, so a private f
 
 1. Поднять `version` в `manifest.json` (Web Store не принимает повторно ту же версию).
 2. `./scripts/build.sh` → загрузить `dist/dev-helper-<version>.zip`.
+
+### Для 1.6.0 в Developer Dashboard
+
+- Новых разрешений нет. Permission justification — обновить **Host permissions** из этого файла
+  (запрос меток задач из таблиц на странице задачи).
+- Privacy policy — опубликованный `PRIVACY.md` должен быть версии от 2026-10-27.
+- Description — дописать строку про метки и фильтр в таблицах задач (тексты выше),
+  при желании — блок «Что нового в 1.6.0».
 
 ### Для 1.5.1 в Developer Dashboard
 
