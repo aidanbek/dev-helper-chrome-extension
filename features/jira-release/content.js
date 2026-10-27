@@ -20,8 +20,6 @@
   const VERSION_RE = /\/versions\/(\d+)/;
   const KEY_RE = /^[A-Z][A-Z0-9_]*-\d+$/;
   const BROWSE_RE = /\/browse\/([A-Z][A-Z0-9_]*-\d+)(?:[/?#]|$)/;
-  // Ссылка на MR в значении поля (текст, URL или документ Atlassian): хвост /diffs, #note_… отрезаем
-  const MR_RE = /https?:\/\/[^\s"'<>\\]+?\/-\/merge_requests\/\d+/g;
 
   const PAGE_SIZE = 100;
   const MAX_PAGES = 50;
@@ -59,7 +57,7 @@
   function mrUrlsIn(value) {
     if (value == null) return [];
     const text = typeof value === 'string' ? value : JSON.stringify(value);
-    return Array.from(new Set(text.match(MR_RE) || []));
+    return DevHelper.mrLinks.find(text);
   }
 
   // Все задачи версии с метками, названием и, если нужно, полем MR — постранично
@@ -353,17 +351,6 @@
     return block;
   }
 
-  function mrIid(url) {
-    const m = url.match(/\/merge_requests\/(\d+)/);
-    return m ? m[1] : '';
-  }
-
-  // «group/sub/project!12» — какой MR откроется
-  function mrRef(url) {
-    const m = url.match(/^https?:\/\/[^/]+\/(.+?)\/-\/merge_requests\/(\d+)/);
-    return m ? m[1] + '!' + m[2] : url;
-  }
-
   // Статус задачи в строке: последний листовой элемент с текстом статуса из API (статус — справа),
   // поднятый до обёртки-лозенджа — самого высокого предка с тем же текстом
   function statusOf(row, key) {
@@ -409,8 +396,8 @@
         button.target = '_blank';
         button.rel = 'noopener noreferrer';
         button.setAttribute('role', 'button');
-        button.title = 'Открыть MR ' + mrRef(url) + ' в новой вкладке';
-        button.textContent = urls.length > 1 ? 'Посмотреть MR !' + mrIid(url) : 'Посмотреть MR';
+        button.title = 'Открыть MR ' + DevHelper.mrLinks.ref(url) + ' в новой вкладке';
+        button.textContent = urls.length > 1 ? 'Посмотреть MR !' + DevHelper.mrLinks.iid(url) : 'Посмотреть MR';
         return button;
       })
     );

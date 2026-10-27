@@ -32,9 +32,6 @@
   const STATUS_TEXT = '[data-testid="issue-field-status.ui.status-view.status-button.status-button--text"]';
   const FIELD_HEADING = '[data-component-selector="jira-issue-field-heading-field-heading-title"]';
 
-  const MR_HREF_RE = /^https?:\/\/[^\s?#]+?\/-\/merge_requests\/\d+/;
-  const MR_TEXT_RE = /https?:\/\/[^\s"'<>]+?\/-\/merge_requests\/\d+/g;
-
   function normalize(text) {
     return (text || '').replace(/\s+/g, ' ').trim().toLowerCase();
   }
@@ -66,14 +63,10 @@
   }
 
   // Ссылки на MR из поля: и из <a href>, и из текста (поле может быть текстовым).
-  // https://gitlab.example.com/group/project/-/merge_requests/12/diffs -> …/merge_requests/12
   function mrUrlsIn(field) {
     const urls = new Set();
-    field.querySelectorAll('a[href]').forEach((a) => {
-      const m = a.href.match(MR_HREF_RE);
-      if (m) urls.add(m[0]);
-    });
-    (field.textContent.match(MR_TEXT_RE) || []).forEach((url) => urls.add(url));
+    field.querySelectorAll('a[href]').forEach((a) => DevHelper.mrLinks.find(a.href).forEach((url) => urls.add(url)));
+    DevHelper.mrLinks.find(field.textContent).forEach((url) => urls.add(url));
     return Array.from(urls);
   }
 
@@ -110,12 +103,6 @@
     return kinds;
   }
 
-  // «group/sub/project!12» — какой MR будет открыт
-  function mrRef(url) {
-    const m = url.match(/^https?:\/\/[^/]+\/(.+?)\/-\/merge_requests\/(\d+)/);
-    return m ? m[1] + '!' + m[2] : url;
-  }
-
   // url — MR, который можно открывать; note — строка рядом с кнопками: какой MR или что мешает
   function describe(anchor) {
     const current = settings || feature.defaults;
@@ -128,7 +115,7 @@
     if (urls.length > 1) {
       return { note: 'В поле «' + fieldName + '» несколько MR (' + urls.length + ') — оставьте одну ссылку', error: true };
     }
-    return { url: urls[0], note: 'MR ' + mrRef(urls[0]) };
+    return { url: urls[0], note: 'MR ' + DevHelper.mrLinks.ref(urls[0]) };
   }
 
   // Ряд кнопок со статусом (статус, Agents, …): ближайший предок — горизонтальный flex с несколькими детьми.

@@ -23,6 +23,7 @@
         'common/core.js',
         'common/storage.js',
         'common/jira-api.js',
+        'common/mr-links.js',
         'common/label-filter.js',
         'features/jira-issue/feature.js',
         'features/jira-issue/content.js',

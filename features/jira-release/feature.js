@@ -21,6 +21,7 @@
         'common/core.js',
         'common/storage.js',
         'common/jira-api.js',
+        'common/mr-links.js',
         'common/clipboard.js',
         'common/label-filter.js',
         'features/jira-release/feature.js',
