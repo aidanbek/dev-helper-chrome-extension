@@ -11,7 +11,7 @@ test('после установки без сайтов открывается �
   await expect(page.locator('#nav')).toContainText('Merge requests');
 });
 
-test('страница настроек: все фичи, служебный раздел и версия', async ({ optionsPage, context }) => {
+test('страница настроек: все фичи, служебный раздел и версия', async ({ optionsPage }) => {
   const nav = optionsPage.locator('#nav .nav-item');
   await expect(nav).toHaveText(FEATURES);
   await expect(optionsPage.locator('.sidebar a.nav-item', { hasText: 'Импорт и экспорт' })).toBeVisible();

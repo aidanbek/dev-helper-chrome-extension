@@ -81,7 +81,9 @@ test('выключение фичи в настройках убирает кн�
 test('без сайта в настройках скрипт на GitLab не работает', async ({ context, page }) => {
   await openMr(context, page);
   await expect(page.locator('[data-testid="title-content"]')).toBeVisible();
-  // Повторные попытки sync идут до 2,5 с — ждём дольше, чтобы отсутствие кнопки что-то значило
+  // Повторные попытки sync идут до 2,5 с — ждём дольше, чтобы отсутствие кнопки что-то значило.
+  // Дождаться нечего: скрипта на странице нет, проверяем именно отсутствие
+  // eslint-disable-next-line playwright/no-wait-for-timeout
   await page.waitForTimeout(3000);
   await expect(page.locator(COPY_BTN)).toHaveCount(0);
 });

@@ -34,11 +34,12 @@ const test = base.extend({
   }, { scope: 'worker' }],
 
   // Свежий профиль на каждый тест: пустой chrome.storage, расширение только что установлено
-  context: async ({ extensionPath }, use) => {
+  context: async ({ extensionPath, headless }, use) => {
     const context = await chromium.launchPersistentContext('', {
       // Расширения работают в полноценном Chromium (новый headless), а не в chromium-headless-shell
       channel: 'chromium',
-      headless: !process.env.HEADED,
+      // --headed из командной строки
+      headless,
       args: [
         '--disable-extensions-except=' + extensionPath,
         '--load-extension=' + extensionPath

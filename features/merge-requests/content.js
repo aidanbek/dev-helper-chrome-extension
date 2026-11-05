@@ -1697,8 +1697,8 @@
     });
   }
 
-  getSettings().then((settings) => {
-    applySettings(settings);
+  getSettings().then((values) => {
+    applySettings(values);
     sync();
   });
 

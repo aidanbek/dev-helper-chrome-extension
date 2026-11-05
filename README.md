@@ -117,16 +117,24 @@ Background регистрирует content script фичи (`chrome.scripting.r
 
 После `git pull` — кнопка ↻ на карточке расширения в `chrome://extensions`.
 
-## Тесты
+## Линтер и тесты
+
+```bash
+npm ci
+npm run lint                      # ESLint, предупреждения тоже считаются ошибкой
+npm run lint:fix                  # исправить то, что исправляется автоматически
+```
+
+Правила — в `eslint.config.js`: код расширения проверяется как обычные скрипты браузера и service worker
+с глобальными `chrome` и `DevHelper`, тесты — как Node и правила `eslint-plugin-playwright`.
 
 E2E на Playwright: настоящий Chromium с распакованным расширением, на каждый тест — свежий профиль.
 GitLab и остальные сайты не нужны: страницы на `*.example.com` подменяются фикстурами (`tests/e2e/support/`).
 
 ```bash
-npm ci
 npx playwright install chromium   # один раз
 npm test                          # headless
-HEADED=1 npm test                 # с окном браузера
+npm run test:headed               # с окном браузера
 npm run test:report               # отчёт с трейсами упавших тестов
 ```
 
@@ -137,7 +145,8 @@ npm run test:report               # отчёт с трейсами упавши�
 ## Публикация в Chrome Web Store
 
 1. Поднять `version` в `manifest.json`.
-2. `./scripts/build.sh` — собирает `dist/dev-helper-<version>.zip` только из файлов расширения
+2. `npm run release` — линтер, E2E-тесты и, если всё прошло, сборка. Только сборка — `npm run build`
+   (или `./scripts/build.sh`): собирает `dist/dev-helper-<version>.zip` только из файлов расширения
    и проверяет, что всё, на что ссылается манифест, на месте.
 3. Загрузить zip в Developer Dashboard. Тексты карточки, обоснования разрешений и ответы про данные —
    в [`store/listing.md`](store/listing.md), политика конфиденциальности — [`PRIVACY.md`](PRIVACY.md).
@@ -621,6 +630,7 @@ options/
   options.js                   сборка разделов, блок «Сайты», загрузка и сохранение
   backup.js                    раздел «Импорт и экспорт»: кнопки, превью, применение
 scripts/build.sh               zip для Chrome Web Store → dist/
+eslint.config.js               правила линтера
 tests/e2e/                     E2E-тесты (Playwright), фикстуры и фейковый GitLab — в support/
 store/listing.md               тексты и ответы для Developer Dashboard (в пакет не входит)
 PRIVACY.md                     политика конфиденциальности

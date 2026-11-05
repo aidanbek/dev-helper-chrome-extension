@@ -82,7 +82,7 @@
     try {
       data = JSON.parse(text);
     } catch (e) {
-      throw new Error('Это не JSON: ' + e.message);
+      throw new Error('Это не JSON: ' + e.message, { cause: e });
     }
     if (!data || typeof data !== 'object' || data.app !== APP) {
       throw new Error('Это не настройки Dev Helper');
@@ -109,7 +109,7 @@
     try {
       url = new URL(value);
     } catch (e) {
-      throw new Error('Не похоже на ссылку: ' + value);
+      throw new Error('Не похоже на ссылку: ' + value, { cause: e });
     }
     if (url.protocol !== 'https:' && url.protocol !== 'http:') {
       throw new Error('Поддерживаются только ссылки http и https');
@@ -128,8 +128,8 @@
       try {
         response = await fetch(url, { credentials: 'include', cache: 'no-store', signal: controller.signal });
       } catch (e) {
-        if (e.name === 'AbortError') throw new Error('Сайт не ответил за ' + FETCH_TIMEOUT / 1000 + ' секунд');
-        throw new Error('Не удалось загрузить файл: сайт недоступен или нет доступа к нему');
+        if (e.name === 'AbortError') throw new Error('Сайт не ответил за ' + FETCH_TIMEOUT / 1000 + ' секунд', { cause: e });
+        throw new Error('Не удалось загрузить файл: сайт недоступен или нет доступа к нему', { cause: e });
       }
       if (response.status === 401 || response.status === 403) {
         throw new Error('Нет доступа к файлу (HTTP ' + response.status + ') — войдите на сайт в этом браузере');
