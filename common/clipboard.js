@@ -59,5 +59,10 @@
     return copyViaEvent(text, html);
   }
 
-  DevHelper.clipboard = { write };
+  // Текст для флейвора text/html
+  function escapeHtml(text) {
+    return text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  }
+
+  DevHelper.clipboard = { write, escapeHtml };
 })();

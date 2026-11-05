@@ -32,9 +32,7 @@
   const STATUS_TEXT = '[data-testid="issue-field-status.ui.status-view.status-button.status-button--text"]';
   const FIELD_HEADING = '[data-component-selector="jira-issue-field-heading-field-heading-title"]';
 
-  function normalize(text) {
-    return (text || '').replace(/\s+/g, ' ').trim().toLowerCase();
-  }
+  const normalize = DevHelper.normalize;
 
   // «готово к тесту»; фолбэк — aria-label «готово к тесту - Change status»
   function statusOf(anchor) {

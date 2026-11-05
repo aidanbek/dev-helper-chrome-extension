@@ -22,9 +22,8 @@
 
   // id поля по названию, как в задаче («Merge Request» → customfield_10050); null — такого поля нет
   async function fieldId(name) {
-    const normalize = (text) => (text || '').replace(/\s+/g, ' ').trim().toLowerCase();
     const fields = await getJson('/rest/api/3/field');
-    const field = (fields || []).find((f) => normalize(f.name) === normalize(name));
+    const field = (fields || []).find((f) => DevHelper.normalize(f.name) === DevHelper.normalize(name));
     return field ? field.id : null;
   }
 

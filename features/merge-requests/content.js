@@ -159,12 +159,7 @@
 
   // ---------- шаблон ----------
 
-  function escapeHtml(value) {
-    return value
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
-  }
+  const { escapeHtml } = DevHelper.clipboard;
 
   const PLACEHOLDER_RE = /\{(\w+)\}/g;
 

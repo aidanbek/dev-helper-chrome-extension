@@ -19,6 +19,9 @@
 
   DevHelper.log = (...args) => console.info(LOG_PREFIX, ...args);
 
+  // Текст для сравнения: без учёта регистра, лишних пробелов и переносов (названия полей, статусов, метки)
+  DevHelper.normalize = (text) => (text || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
   DevHelper.getFeature = (id) => DevHelper.features.find((feature) => feature.id === id) || null;
 
   // Фича описывается частями: feature.js — метаданные и дефолты,

@@ -15,7 +15,9 @@
   const OWN_SELECTOR = '.' + BAR_CLASS + ', .' + ROW_LABELS_CLASS + ', .' + ROW_MRS_CLASS;
   // Атрибут, а не класс: React перезаписывает className строк при перерисовке, чужие атрибуты не трогает
   const HIDDEN_ATTR = 'data-dhr-hidden';
-  const { NO_LABELS, NO_REQUIRED, normalize, isRequired, parseRequired, setHidden } = DevHelper.labelFilter;
+  const normalize = DevHelper.normalize;
+  const { escapeHtml } = DevHelper.clipboard;
+  const { NO_LABELS, NO_REQUIRED, isRequired, parseRequired, setHidden } = DevHelper.labelFilter;
 
   const VERSION_RE = /\/versions\/(\d+)/;
   const KEY_RE = /^[A-Z][A-Z0-9_]*-\d+$/;
@@ -219,10 +221,6 @@
   }
 
   // ---------- копирование ----------
-
-  function escapeHtml(text) {
-    return text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-  }
 
   // Задачи релиза под фильтром, а не только строки на странице: Jira показывает список частями.
   // Порядок — как в списке, затем ещё не показанные по ключу

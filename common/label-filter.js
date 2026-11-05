@@ -15,9 +15,7 @@
   const LABEL_CLASS = 'dhl-label';
   const CHIP_HINT = 'Клик — показать задачи с меткой, Shift+клик — скрыть';
 
-  function normalize(text) {
-    return (text || '').replace(/\s+/g, ' ').trim().toLowerCase();
-  }
+  const normalize = DevHelper.normalize;
 
   // Обязательные метки из настройки: через запятую или пробел, без учёта регистра
   function parseRequired(value) {
@@ -238,5 +236,5 @@
     };
   }
 
-  DevHelper.labelFilter = { NO_LABELS, NO_REQUIRED, normalize, parseRequired, isRequired, setHidden, create };
+  DevHelper.labelFilter = { NO_LABELS, NO_REQUIRED, parseRequired, isRequired, setHidden, create };
 })();
