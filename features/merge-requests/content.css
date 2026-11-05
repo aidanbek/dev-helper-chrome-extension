@@ -148,6 +148,9 @@
   align-items: flex-start;
   justify-content: center;
   padding: 10vh 16px 16px;
+  /* В низком окне модалка не помещается — прокручиваем подложку, иначе кнопки окажутся за краем */
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: rgba(5, 5, 6, .5);
 }
 

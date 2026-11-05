@@ -1,5 +1,8 @@
 .idea/
 dist/
+test-results/
 *.zip
 *.crx
 *.pem
+node_modules/
+playwright-report/

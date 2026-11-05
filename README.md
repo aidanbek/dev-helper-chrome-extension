@@ -117,6 +117,23 @@ Background регистрирует content script фичи (`chrome.scripting.r
 
 После `git pull` — кнопка ↻ на карточке расширения в `chrome://extensions`.
 
+## Тесты
+
+E2E на Playwright: настоящий Chromium с распакованным расширением, на каждый тест — свежий профиль.
+GitLab и остальные сайты не нужны: страницы на `*.example.com` подменяются фикстурами (`tests/e2e/support/`).
+
+```bash
+npm ci
+npx playwright install chromium   # один раз
+npm test                          # headless
+HEADED=1 npm test                 # с окном браузера
+npm run test:report               # отчёт с трейсами упавших тестов
+```
+
+Тесты запускают копию расширения с `host_permissions` на `*.example.com`: диалог Chrome с запросом доступа
+к сайту из теста не нажать. В сборку для Chrome Web Store тесты и эта правка не попадают.
+Горячие клавиши и контекстное меню Chrome тоже не нажать — тесты вызывают те же обработчики background.
+
 ## Публикация в Chrome Web Store
 
 1. Поднять `version` в `manifest.json`.
@@ -604,6 +621,7 @@ options/
   options.js                   сборка разделов, блок «Сайты», загрузка и сохранение
   backup.js                    раздел «Импорт и экспорт»: кнопки, превью, применение
 scripts/build.sh               zip для Chrome Web Store → dist/
+tests/e2e/                     E2E-тесты (Playwright), фикстуры и фейковый GitLab — в support/
 store/listing.md               тексты и ответы для Developer Dashboard (в пакет не входит)
 PRIVACY.md                     политика конфиденциальности
 ```
