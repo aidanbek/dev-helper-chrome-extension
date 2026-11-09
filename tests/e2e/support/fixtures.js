@@ -10,7 +10,7 @@ const { test: base, expect, chromium } = require('@playwright/test');
 
 const ROOT = path.resolve(__dirname, '../../..');
 // Как в scripts/build.sh: только то, что попадает в пакет
-const PACKAGE = ['manifest.json', 'background.js', 'common', 'features', 'options', 'icons'];
+const PACKAGE = ['manifest.json', 'background.js', 'common', 'features', 'options', 'popup', 'icons'];
 const TEST_ORIGINS = ['*://*.example.com/*'];
 
 function buildExtension() {

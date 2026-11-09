@@ -5,10 +5,13 @@ importScripts(
   'common/storage.js',
   'common/sites.js',
   'common/redirects.js',
+  'common/cookies.js',
   'features/merge-requests/feature.js',
   'features/jira-issue/feature.js',
   'features/jira-release/feature.js',
-  'features/redirects/feature.js'
+  'features/redirects/feature.js',
+  'features/cookies/feature.js',
+  'features/cookies/background.js'
 );
 
 const SCRIPT_PREFIX = 'feature-';
@@ -92,11 +95,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
   const keys = Object.keys(changes);
   if (keys.some((key) => key.endsWith('.hosts'))) scheduleSync();
   if (keys.some((key) => key.startsWith(REDIRECTS_PREFIX))) scheduleRedirectMenus();
-});
-
-// Клик по иконке расширения открывает страницу настроек.
-chrome.action.onClicked.addListener(() => {
-  chrome.runtime.openOptionsPage();
 });
 
 // Горячие клавиши из manifest.commands пересылаются во вкладку — их обрабатывает фича.

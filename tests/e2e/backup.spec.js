@@ -26,7 +26,7 @@ test.describe('экспорт', () => {
 
     expect(name).toMatch(/^dev-helper-settings-\d{4}-\d{2}-\d{2}\.json$/);
     expect(data).toMatchObject({ app: 'dev-helper', format: 1, kind: 'full' });
-    expect(Object.keys(data.features)).toEqual(['mergeRequests', 'jiraIssue', 'jiraRelease', 'redirects']);
+    expect(Object.keys(data.features)).toEqual(['mergeRequests', 'jiraIssue', 'jiraRelease', 'redirects', 'cookies']);
     expect(data.features.mergeRequests.settings).toMatchObject({
       myUsername: 'jdoe',
       hosts: ['gitlab.example.com'],

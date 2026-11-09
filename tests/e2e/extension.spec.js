@@ -1,7 +1,7 @@
 // Расширение целиком: установка, service worker, страница настроек.
 const { test, expect } = require('./support/fixtures');
 
-const FEATURES = ['Merge requests', 'Задачи Jira', 'Релизы Jira', 'Переходы'];
+const FEATURES = ['Merge requests', 'Задачи Jira', 'Релизы Jira', 'Переходы', 'Cookie'];
 
 test('после установки без сайтов открывается страница настроек', async ({ context, extensionId }) => {
   const url = 'chrome-extension://' + extensionId + '/options/options.html';

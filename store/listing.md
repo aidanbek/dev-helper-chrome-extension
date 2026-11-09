@@ -202,12 +202,13 @@ EN:
 RU: Ускорить рутинные действия разработчика на страницах рабочих инструментов — сейчас это отправка
 merge request в GitLab на ревью (с переходом в Telegram и Jira) и переходы из задачи Jira к её MR:
 заливка на stage и pipeline ветки, фильтр задач релиза Jira по меткам, а также переход с текущей страницы
-на связанную (например, в админку).
+на связанную (например, в админку) и просмотр и переключение значений cookie сайта (флаги, debug, вариант A/B-теста).
 
 EN: Speed up routine developer actions on work tool pages — currently sending GitLab merge requests
 for review (with quick links to Telegram and Jira) and jumping from a Jira issue to its merge request:
 deploying to stage and opening the branch pipeline, filtering a Jira release's issues by labels, plus jumping
-from the current page to a related one (e.g. its admin page).
+from the current page to a related one (e.g. its admin page) and viewing and switching a site's cookie values
+(feature flags, debug mode, an A/B variant).
 
 ### Permission justification
 
@@ -225,6 +226,11 @@ and links that match the rule's URL pattern. Clicking it opens the resulting lin
 
 **activeTab** — EN: When the user presses the "Redirects" hotkey, the extension reads the URL of the active tab
 to build the link from the user's rules. The page content is not read and nothing is injected.
+
+**cookies** — EN: The "Cookie" feature shows a table of the current site's cookies (on a site the user added and granted access to)
+in the extension popup (opened from the toolbar icon), so a developer can inspect them,
+change a value, switch between saved values, add or delete cookies while testing — including HttpOnly cookies that a page
+script cannot change. Cookie values are never put into the page. Cookie values never leave the browser.
 
 **Host permissions** (`optional_host_permissions: *://*/*`, nothing is granted at install) —
 EN: GitLab is often self-hosted on an arbitrary domain, and Jira Cloud lives on a per-company subdomain,

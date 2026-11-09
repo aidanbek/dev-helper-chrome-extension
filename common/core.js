@@ -32,7 +32,8 @@
   //   description — пояснение под заголовком раздела
   //   defaults    — настройки по умолчанию (включая enabled)
   //   content     — content script фичи: { paths, js, css, sitesLabel, sitesPlaceholder };
-  //                 регистрируется на хостах из настройки hosts (в defaults — hosts: [])
+  //                 регистрируется на хостах из настройки hosts (в defaults — hosts: []).
+  //                 Без paths и js — только блок «Сайты» в настройках, скрипт не регистрируется
   //   legacyKeys  — ключи storage до разделения на фичи, переносятся под префикс
   //   options     — { init(root), load(root, values), collect(root) } для страницы настроек
   //   personal    — настройки, личные для пользователя (username): в экспорт «для команды» не попадают

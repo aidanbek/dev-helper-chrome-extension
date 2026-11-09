@@ -30,7 +30,7 @@ module.exports = [
 
   // Content scripts и страница настроек
   {
-    files: ['common/**/*.js', 'features/**/*.js', 'options/**/*.js'],
+    files: ['common/**/*.js', 'features/**/*.js', 'options/**/*.js', 'popup/**/*.js'],
     languageOptions: {
       sourceType: 'script',
       globals: { ...globals.browser, ...extensionGlobals }

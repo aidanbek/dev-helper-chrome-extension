@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Что попадает в пакет — всё остальное (README, store/, scripts/, .idea) остаётся снаружи
-FILES=(manifest.json background.js common features options icons)
+FILES=(manifest.json background.js common features options popup icons)
 
 python3 - "${FILES[@]}" <<'PY'
 import json, os, sys, zipfile
@@ -22,6 +22,7 @@ out = os.path.join('dist', name)
 refs = [manifest['background']['service_worker'], manifest['options_ui']['page']]
 refs += manifest['icons'].values()
 refs += manifest['action']['default_icon'].values()
+refs.append(manifest['action']['default_popup'])
 for cs in manifest.get('content_scripts', []):
     refs += cs.get('js', []) + cs.get('css', [])
 missing = [r for r in refs if not os.path.isfile(r)]

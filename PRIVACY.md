@@ -1,6 +1,6 @@
 # Политика конфиденциальности / Privacy Policy — Dev Helper
 
-_Последнее обновление / Last updated: 2026-10-27_
+_Последнее обновление / Last updated: 2026-11-05_
 
 ## Русский
 
@@ -26,6 +26,8 @@ Dev Helper не собирает, не хранит на внешних серв
   метки задач из таблиц на странице (например, дочерних задач эпика), чтобы показать их и фильтр по меткам. При импорте по ссылке расширение по вашему действию
   загружает файл настроек с указанного вами адреса (с куками этого сайта, чтобы открылся приватный файл);
   на этот адрес ничего не отправляется. Других запросов нет, аналитики и трекинга нет.
+- **Cookie.** На сайте, который вы добавили и к которому выдали доступ, расширение показывает его cookie в окне расширения
+  и по вашему действию меняет их значение, добавляет или удаляет cookie. Сами значения в страницу сайта не попадают. Сохранённые вами списки значений хранятся в настройках. Значения cookie никуда не отправляются.
 - **Внешние ссылки.** По вашему действию расширение открывает указанные вами в настройках ссылки
   (Telegram, Jira, ссылки «Переходов»). Что происходит на этих сайтах, определяют их собственные политики.
 
@@ -54,6 +56,9 @@ Dev Helper does not collect user data, does not store it on external servers, an
   (e.g. an epic's child issues) from the same Jira site to show them and the labels filter. When importing from a URL, on your action the extension downloads the settings file
   from the address you entered (with that site's cookies, so a private file can be opened); nothing is sent to it.
   No other requests are made; there is no analytics or tracking.
+- **Cookies.** On a site you added and granted access to, the extension shows its cookies in the extension popup
+  and, on your action, changes their values, adds or deletes cookies. Cookie values are never put into the page. The value lists you save are kept in the settings.
+  Cookie values are never sent anywhere.
 - **External links.** On your action the extension opens links you configured in the settings (Telegram, Jira, "Redirects" links).
   Those sites are governed by their own policies.
 

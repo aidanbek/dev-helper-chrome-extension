@@ -312,3 +312,10 @@ code { background: #f0f0f0; padding: 1px 4px; border-radius: 3px; }
 .backup-skipped { color: #9e5400; }
 .backup-error { color: #dd2b0e; font-weight: 500; margin: 0; }
 
+
+/* Cookie: списки значений — имя, домен, значения чипами */
+.value-list { display: flex; align-items: center; gap: 10px; padding: 6px 0 6px 10px; margin-bottom: 8px; border: 1px solid #dcdcde; border-radius: 6px; }
+.value-list-name { flex: 0 0 22%; font: 600 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+.value-list-domain { flex: 0 0 24%; color: #666; font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+.value-list-values { flex: 1; display: flex; flex-wrap: wrap; gap: 4px; }
+.value-list button.remove { padding: 4px 10px; margin-right: 6px; }
