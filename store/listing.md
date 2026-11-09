@@ -239,10 +239,13 @@ and links that match the rule's URL pattern. Clicking it opens the resulting lin
 **activeTab** — EN: When the user presses the "Redirects" hotkey, the extension reads the URL of the active tab
 to build the link from the user's rules. The page content is not read and nothing is injected.
 
-**cookies** — EN: The "Cookie" feature shows a table of the current site's cookies (on a site the user added and granted access to)
-in the extension popup (opened from the toolbar icon), so a developer can inspect them,
-change a value, switch between saved values, add or delete cookies while testing — including HttpOnly cookies that a page
-script cannot change. Cookie values are never put into the page. Cookie values never leave the browser.
+**cookies** — EN: The "Cookie" feature is a developer tool for inspecting and changing a site's cookies while testing.
+It shows a table of the current tab's site cookies in the extension popup (name, value, domain, path, flags, expiry) and,
+only when the user clicks, changes a cookie's value, adds or deletes a cookie, or switches between values the user saved.
+The chrome.cookies API is required because page scripts cannot read or change HttpOnly cookies and cannot see any cookie's
+domain, path or flags. It works only on sites the user added in the settings and granted access to. Cookie data is handled
+locally: it is never put into the page and never sent to the developer or any third-party server. Value lists the user
+explicitly saves are stored in chrome.storage.sync with the other settings, so Chrome may sync them across the user's devices.
 
 **Host permissions** (`optional_host_permissions: *://*/*`, nothing is granted at install) —
 EN: GitLab is often self-hosted on an arbitrary domain, and Jira Cloud lives on a per-company subdomain,
@@ -258,6 +261,9 @@ the labels, status and the MR link field of the release's issues (plus the field
 Jira site to filter the work items list and show MR links in it. Removing a site revokes its access.
 When the user imports settings from a URL, the extension requests access to that URL's site at that moment
 and downloads the settings file from it (with the site's cookies, so a private file can be read); nothing is sent to it.
+For the "Cookie" feature the user adds a site on the options page and the extension requests access to that single site
+at that moment: chrome.cookies only returns cookies for sites the extension has host access to. No content script runs
+on these sites and the page content is not read.
 
 **Remote code** — No, all code is included in the package.
 
