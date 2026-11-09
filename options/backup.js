@@ -21,13 +21,9 @@
     '</fieldset>' +
     '<fieldset>' +
     '<legend>Импорт</legend>' +
-    '<p class="hint hint-top">Файл, ссылка или текст экспорта Dev Helper. Сначала покажем, что изменится, — запись только ' +
+    '<p class="hint hint-top">Ссылка, файл или текст экспорта Dev Helper. Сначала покажем, что изменится, — запись только ' +
     'по кнопке «Применить». Настройки, которых нет в файле, не меняются.</p>' +
-    '<div class="backup-actions">' +
-    '<button type="button" class="secondary" data-action="pick">Выбрать файл…</button>' +
-    '<input type="file" accept=".json,application/json" hidden>' +
-    '</div>' +
-    '<label for="backup-url">или загрузите по ссылке</label>' +
+    '<label for="backup-url">Загрузите по ссылке</label>' +
     '<div class="row backup-url-row"><input type="url" id="backup-url" spellcheck="false" ' +
     'placeholder="https://gitlab.example.com/group/repo/-/raw/main/dev-helper.json">' +
     '<button type="button" class="secondary" data-action="fetch">Загрузить</button></div>' +
@@ -35,6 +31,11 @@
     'Приватный файл GitLab загрузится, если вы вошли в GitLab в этом браузере. ' +
     'Ссылка запоминается: чтобы подтянуть новую версию, нажмите «Загрузить» ещё раз.</p>' +
     '<p class="hint backup-source" hidden></p>' +
+    '<label for="backup-file">или выберите файл</label>' +
+    '<div class="backup-actions">' +
+    '<button type="button" class="secondary" data-action="pick">Выбрать файл…</button>' +
+    '<input type="file" id="backup-file" accept=".json,application/json" hidden>' +
+    '</div>' +
     '<label for="backup-text">или вставьте текст</label>' +
     '<textarea id="backup-text" rows="5" spellcheck="false" placeholder="{ &quot;app&quot;: &quot;dev-helper&quot;, … }"></textarea>' +
     '<div class="backup-actions">' +

@@ -55,7 +55,7 @@ const test = base.extend({
     let [worker] = context.serviceWorkers();
     if (!worker) worker = await context.waitForEvent('serviceworker');
     const options = 'chrome-extension://' + new URL(worker.url()).host + '/options/options.html';
-    await expect.poll(() => context.pages().some((page) => page.url() === options),
+    await expect.poll(() => context.pages().some((page) => page.url().startsWith(options)),
       { message: 'после установки не открылись настройки' }).toBe(true);
     await use(worker);
   },

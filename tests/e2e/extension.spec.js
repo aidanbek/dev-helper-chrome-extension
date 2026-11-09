@@ -3,12 +3,13 @@ const { test, expect } = require('./support/fixtures');
 
 const FEATURES = ['Merge requests', 'Задачи Jira', 'Релизы Jira', 'Переходы', 'Cookie'];
 
-test('после установки без сайтов открывается страница настроек', async ({ context, extensionId }) => {
-  const url = 'chrome-extension://' + extensionId + '/options/options.html';
-  // Chrome открывает настройки в уже открытой пустой вкладке — события page может не быть
+test('после установки без сайтов настройки открываются на разделе импорта', async ({ context, extensionId }) => {
+  const url = 'chrome-extension://' + extensionId + '/options/options.html#backup';
   await expect.poll(() => context.pages().map((page) => page.url())).toContain(url);
   const page = context.pages().find((p) => p.url() === url);
-  await expect(page.locator('#nav')).toContainText('Merge requests');
+  await expect(page.locator('section.panel#backup')).toBeVisible();
+  await expect(page.locator('section.panel#merge-requests')).toBeHidden();
+  await expect(page).toHaveTitle('Импорт и экспорт — Dev Helper');
 });
 
 test('страница настроек: все фичи, служебный раздел и версия', async ({ optionsPage }) => {

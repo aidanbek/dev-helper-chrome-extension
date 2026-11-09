@@ -75,9 +75,10 @@ chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   await scheduleSync();
   await scheduleRedirectMenus();
 
-  // Без добавленного сайта ни одна фича не работает — сразу ведём в настройки
+  // Без добавленного сайта ни одна фича не работает — сразу ведём в настройки, на импорт:
+  // так быстрее всего подключить общий файл команды. openOptionsPage не умеет открывать раздел по hash
   if ((reason === 'install' || reason === 'update') && !(await hasAnySites())) {
-    chrome.runtime.openOptionsPage();
+    chrome.tabs.create({ url: chrome.runtime.getURL('options/options.html#backup') });
   }
 });
 
