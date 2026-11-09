@@ -1,4 +1,5 @@
-// Фича «Задачи Jira»: блок под рядом кнопок со статусом задачи — «Залить на stage» и «Pipeline ветки».
+// Фича «Задачи Jira»: под рядом кнопок со статусом задачи — предупреждение о метках и блок кнопок
+// «Залить на stage» и «Pipeline ветки».
 (() => {
   'use strict';
 
@@ -9,6 +10,15 @@
   const BLOCK_CLASS = 'dhj-block';
   const BTN_CLASS = 'dhj-btn';
   const NOTE_CLASS = 'dhj-note';
+  const WARNING_CLASS = 'dhj-labels-warning';
+  const OWN_SELECTOR = '.' + BLOCK_CLASS + ', .' + WARNING_CLASS;
+  // Вариант в списке меток — атрибут, а не класс: React перезаписывает className, чужие атрибуты не трогает
+  const REQUIRED_OPTION_ATTR = 'data-dhj-required-option';
+  const WARNING_TEXT = '⚠ Нет обязательной метки';
+  // Обязательные метки — общие с фичей «Релизы Jira», задаются в её настройках
+  const RELEASE_ID = 'jiraRelease';
+  const RELEASE_DEFAULTS = { requiredLabels: '' };
+  const { isRequired, parseRequired } = DevHelper.labelFilter;
 
   // Кнопки блока в порядке показа. Обе открывают MR из поля задачи с меткой, дальше — фича «Merge requests»
   const BUTTONS = [
@@ -70,11 +80,13 @@
 
   // Выпадающий список редактора меток («Recent labels» и подсказки) рендерится внутри поля — это не метки задачи
   const LABELS_MENU = '[role="listbox"], [role="option"], [role="menu"], [role="menuitem"], [id*="listbox"]';
+  const LABEL_OPTION = '[role="option"], [role="menuitem"]';
 
-  // Метки задачи: тексты листовых элементов поля без заголовка (чипы меток — ссылки с текстом метки)
+  // Метки задачи: тексты листовых элементов поля без заголовка (чипы меток — ссылки с текстом метки).
+  // null — поля нет на странице, метки неизвестны
   function labelsOf(anchor, fieldName) {
     const field = findField(anchor, normalize(fieldName));
-    if (!field) return [];
+    if (!field) return null;
     return Array.from(field.querySelectorAll('*'))
       .filter((el) => !el.children.length && !el.closest(FIELD_HEADING) && !el.closest(LABELS_MENU))
       .map((el) => normalize(el.textContent))
@@ -96,9 +108,35 @@
     const wanted = current.pipelineButton ? parseLabels(current.pipelineLabels) : [];
     if (wanted.length) {
       const labels = labelsOf(anchor, current.labelsField || feature.defaults.labelsField);
-      if (labels.some((label) => wanted.includes(label))) kinds.push('pipeline');
+      if (labels && labels.some((label) => wanted.includes(label))) kinds.push('pipeline');
     }
     return kinds;
+  }
+
+  // Обязательные метки из настроек; предупреждение выключено — как будто их нет
+  function activeRequired() {
+    const current = settings || feature.defaults;
+    return current.labelsWarning ? parseRequired(requiredValue) : [];
+  }
+
+  // Поля нет на странице (свёрнуто в «More fields») — метки неизвестны, зря не предупреждаем
+  function missesRequired(anchor) {
+    const required = activeRequired();
+    if (!required.length) return false;
+    const labels = labelsOf(anchor, (settings || feature.defaults).labelsField || feature.defaults.labelsField);
+    return !!labels && !labels.some((label) => isRequired(label, required));
+  }
+
+  // Выделяем обязательные метки в выпадающем списке редактора поля. Пишем только при изменении
+  function markRequiredOptions(anchor) {
+    const name = (settings || feature.defaults).labelsField || feature.defaults.labelsField;
+    const field = findField(anchor, normalize(name));
+    if (!field) return;
+    const required = activeRequired();
+    field.querySelectorAll(LABEL_OPTION).forEach((option) => {
+      const wanted = isRequired(option.textContent, required);
+      if (option.hasAttribute(REQUIRED_OPTION_ATTR) !== wanted) option.toggleAttribute(REQUIRED_OPTION_ATTR, wanted);
+    });
   }
 
   // url — MR, который можно открывать; note — строка рядом с кнопками: какой MR или что мешает
@@ -188,40 +226,65 @@
     return block;
   }
 
+  // Наш элемент с классом сразу под рядом со статусом: предупреждение, затем блок кнопок
+  function ownAfter(place, className) {
+    for (let el = place.nextElementSibling; el && el.matches(OWN_SELECTOR); el = el.nextElementSibling) {
+      if (el.classList.contains(className)) return el;
+    }
+    return null;
+  }
+
+  function renderWarning(place) {
+    let warning = ownAfter(place, WARNING_CLASS);
+    if (!warning) {
+      warning = document.createElement('div');
+      warning.className = WARNING_CLASS;
+      place.insertAdjacentElement('afterend', warning);
+    }
+    if (warning.textContent !== WARNING_TEXT) warning.textContent = WARNING_TEXT;
+    return warning;
+  }
+
   function mount() {
-    // Блоки, которым не нашлось кнопок (сменили статус, сняли метку, закрыли задачу), в конце удаляем
-    const stale = new Set(document.querySelectorAll('.' + BLOCK_CLASS));
+    // Блоки, которые стали не нужны (сменили статус, поставили метку, закрыли задачу), в конце удаляем
+    const stale = new Set(document.querySelectorAll(OWN_SELECTOR));
 
     document.querySelectorAll(STATUS_ANCHOR).forEach((anchor) => {
+      markRequiredOptions(anchor);
       const kinds = kindsFor(anchor);
-      if (!kinds.length) return;
+      const missing = missesRequired(anchor);
+      if (!kinds.length && !missing) return;
       const place = statusRow(anchor);
-      const next = place.nextElementSibling;
-      let block = next && next.classList.contains(BLOCK_CLASS) ? next : null;
+      const warning = missing ? renderWarning(place) : null;
+      if (warning) stale.delete(warning);
+      if (!kinds.length) return;
+      let block = ownAfter(place, BLOCK_CLASS);
       if (!block) {
         block = build();
-        place.insertAdjacentElement('afterend', block);
+        (warning || place).insertAdjacentElement('afterend', block);
         log('блок кнопок задачи вставлен');
       }
       stale.delete(block);
       render(block, kinds, describe(anchor));
     });
 
-    stale.forEach((block) => block.remove());
+    stale.forEach((el) => el.remove());
   }
 
   function unmount() {
-    document.querySelectorAll('.' + BLOCK_CLASS).forEach((block) => block.remove());
+    document.querySelectorAll(OWN_SELECTOR).forEach((el) => el.remove());
+    document.querySelectorAll('[' + REQUIRED_OPTION_ATTR + ']').forEach((el) => el.removeAttribute(REQUIRED_OPTION_ATTR));
   }
 
   // ---------- жизненный цикл ----------
 
   // До загрузки настроек ничего не вставляем — иначе у выключенной фичи мелькнёт кнопка
   let settings = null;
+  let requiredValue = '';
   let scheduled = false;
 
   function active() {
-    return !!settings && settings.enabled && (settings.stageButton || settings.pipelineButton);
+    return !!settings && settings.enabled && (settings.stageButton || settings.pipelineButton || settings.labelsWarning);
   }
 
   function sync() {
@@ -239,7 +302,17 @@
     sync();
   });
 
+  DevHelper.storage.getFeature(RELEASE_ID, RELEASE_DEFAULTS).then((values) => {
+    requiredValue = values.requiredLabels;
+    sync();
+  });
+
   try {
+    DevHelper.storage.onFeatureChanged(RELEASE_ID, (changes) => {
+      if (!('requiredLabels' in changes)) return;
+      requiredValue = changes.requiredLabels;
+      sync();
+    });
     DevHelper.storage.onFeatureChanged(feature.id, (changes) => {
       settings = { ...(settings || feature.defaults), ...changes };
       sync();

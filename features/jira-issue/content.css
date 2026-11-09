@@ -59,6 +59,35 @@
   font-weight: 500;
 }
 
+/* У задачи нет обязательной метки — над блоком кнопок, цвет предупреждения Atlassian */
+.dhj-labels-warning {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: var(--ds-border-width, 1px) solid var(--ds-border-warning, #e56910);
+  border-left-width: 4px;
+  border-radius: var(--ds-border-radius-200, 8px);
+  background: var(--ds-background-warning, #fff7d6);
+  color: var(--ds-text-warning, #a54800);
+  font-size: 14px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+/* Обязательная метка в выпадающем списке поля Labels. Подпись, а не фон и тень: ими Jira показывает наведение и фокус */
+[data-dhj-required-option] {
+  font-weight: 600;
+}
+
+[data-dhj-required-option]::after {
+  content: 'обязательная';
+  margin-left: 8px;
+  color: var(--ds-text-discovery, #5e4db2);
+  font-size: 11px;
+  font-weight: 600;
+}
+
 /* Метки задачи под названием в строке таблицы задач. Ячейке-flex разрешаем перенос — блок на всю ширину
    встаёт под названием и в обычной ячейке, и во flex-ряду. Сами метки и фильтр — common/label-filter.css */
 [data-dhj-labels-cell] {

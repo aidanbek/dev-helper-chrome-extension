@@ -46,6 +46,18 @@
   <p class="hint">Название поля, как в задаче. Пусто — «Labels».</p>
 </fieldset>
 <fieldset>
+  <legend>Обязательные метки</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="jira-labelsWarning" data-field="labelsWarning">
+    <label for="jira-labelsWarning">Предупреждать, если у задачи нет обязательной метки, и выделять обязательные в списке меток</label>
+  </div>
+  <p class="hint">
+    Жёлтый блок под статусом задачи, в любом статусе: у задачи нет ни одной метки из настройки «Обязательные метки»
+    фичи «Релизы Jira». Не заданы обязательные метки или поле с метками не видно в задаче — предупреждения нет.
+    В выпадающем списке поля с метками обязательные выделены и подписаны.
+  </p>
+</fieldset>
+<fieldset>
   <legend>Метки в таблицах задач</legend>
   <div class="checkbox">
     <input type="checkbox" id="jira-rowLabels" data-field="rowLabels">

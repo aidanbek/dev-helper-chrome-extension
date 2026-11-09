@@ -99,8 +99,8 @@
       return removed;
     }
 
-    // Чипы: метки задач с числом задач (обязательные — первыми, внутри групп частые — первыми),
-    // затем «без меток» и «без обязательных меток». Служебные чипы показываем и с нулём — ноль тоже ответ
+    // Чипы: сначала «без обязательных меток», затем метки задач с числом задач (обязательные — первыми,
+    // внутри групп частые — первыми) и «без меток». Служебные чипы показываем и с нулём — ноль тоже ответ
     function chipsFor(labelLists, required) {
       const counts = new Map();
       let noLabels = 0;
@@ -115,7 +115,7 @@
         .sort((a, b) => b.required - a.required || b.count - a.count || a.label.localeCompare(b.label));
       chips.push({ label: NO_LABELS, text: 'без меток', count: noLabels, special: true });
       if (required.length) {
-        chips.push({ label: NO_REQUIRED, text: 'без обязательных меток', count: noRequired, special: true });
+        chips.unshift({ label: NO_REQUIRED, text: 'без обязательных меток', count: noRequired, special: true });
       }
       return chips;
     }
