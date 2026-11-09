@@ -107,6 +107,18 @@ Settings import and export — as a file, via the clipboard or from a URL: a bac
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
 
+### Что нового в 1.7.0 / What's new in 1.7.0
+
+RU:
+• Cookie: таблица cookie сайта в окне расширения — значения, домен, путь и флаги, в том числе HttpOnly. Значение можно изменить,
+  cookie — добавить и удалить. Для cookie можно сохранить список значений и переключать их одним кликом; такие cookie идут вверху таблицы.
+• Клик по иконке расширения теперь открывает окно с таблицей cookie; настройки — кнопкой в этом окне.
+
+EN:
+• Cookie: a table of the site's cookies in the extension popup — values, domain, path and flags, including HttpOnly. Change a value,
+  add or delete cookies. Save a list of values for a cookie and switch between them in one click; such cookies are shown at the top of the table.
+• Clicking the extension icon now opens the popup with the cookie table; settings are one button away in that popup.
+
 ### Что нового в 1.6.0 / What's new in 1.6.0
 
 RU:
