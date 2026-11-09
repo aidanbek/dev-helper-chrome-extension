@@ -107,6 +107,16 @@ Settings import and export — as a file, via the clipboard or from a URL: a bac
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
 
+### Что нового в 1.7.1 / What's new in 1.7.1
+
+RU:
+• После установки настройки открываются сразу на разделе «Импорт и экспорт» — так быстрее подключить общий файл команды.
+• В блоке импорта первой идёт загрузка по ссылке, за ней — выбор файла и вставка текста.
+
+EN:
+• After installation, the settings open right on the "Import and export" section, the quickest way to connect your team's shared file.
+• In the import block, loading from a URL now comes first, followed by picking a file and pasting text.
+
 ### Что нового в 1.7.0 / What's new in 1.7.0
 
 RU:
@@ -277,6 +287,11 @@ on these sites and the page content is not read.
 
 1. Поднять `version` в `manifest.json` (Web Store не принимает повторно ту же версию).
 2. `./scripts/build.sh` → загрузить `dist/dev-helper-<version>.zip`.
+
+### Для 1.7.1 в Developer Dashboard
+
+- Разрешения и обработка данных не менялись — Single purpose, Permission justification и Privacy policy оставить как есть.
+- Description — при желании дописать блок «Что нового в 1.7.1» (тексты выше).
 
 ### Для 1.6.0 в Developer Dashboard
 
