@@ -212,6 +212,7 @@
   const ICON_EXTERNAL = 'external-link';
   const ICON_WARNING = 'warning-solid';
   const ICON_MERGE_REQUEST = 'merge-request';
+  const ICON_DOC_CHANGES = 'doc-changes';
 
   // Фолбэк, если спрайт иконок GitLab на странице не нашёлся
   const FALLBACK_ICON_PATHS = {
@@ -229,7 +230,11 @@
     [ICON_MERGE_REQUEST]:
       'M4 1a2 2 0 1 0 0 4a2 2 0 1 0 0-4Zm0 1a1 1 0 1 1 0 2a1 1 0 1 1 0-2ZM3.5 5.5h1v5.5h-1ZM4 11a2 2 0 1 0 0 4' +
       'a2 2 0 1 0 0-4Zm0 1a1 1 0 1 1 0 2a1 1 0 1 1 0-2ZM12 11a2 2 0 1 0 0 4a2 2 0 1 0 0-4Zm0 1a1 1 0 1 1 0 2' +
-      'a1 1 0 1 1 0-2ZM11.5 5.5h1V11h-1ZM8 4.5h4.5v1H8ZM8 2.5v5L5.5 5Z'
+      'a1 1 0 1 1 0-2ZM11.5 5.5h1V11h-1ZM8 4.5h4.5v1H8ZM8 2.5v5L5.5 5Z',
+    // Лист с «+» и «−»
+    [ICON_DOC_CHANGES]:
+      'M3 1h6.5L13 4.5V15H3V1Zm1.5 1.5v11h7V5.5H8.5v-3h-4ZM7.25 5v1.5h-1.5V8h1.5v1.5h1.5V8h1.5V6.5h-1.5V5h-1.5Z' +
+      'M5.75 11h4.5v1.5h-4.5V11Z'
   };
 
   // /assets/icons-<hash>.svg — берём у любой иконки GitLab на странице
@@ -920,6 +925,270 @@
     }
   }
 
+  // ---------- размер MR ----------
+
+  const SIZE_ID = 'glmrh-mr-size';
+  const SIZE_TTL = 60 * 1000;
+
+  // JSON с сайта GitLab с кешем на минуту: новые коммиты и метки подхватятся. get() отдаёт последний
+  // ответ (null — ещё нет или не распознан) и при устаревании перезапрашивает, по ответу — sync()
+  function createJsonCache(parse, what) {
+    let state = { url: '', value: null, at: 0, pending: false };
+    return {
+      get(url) {
+        if (state.url !== url || (!state.pending && Date.now() - state.at >= SIZE_TTL)) {
+          const next = { url, value: state.url === url ? state.value : null, at: Date.now(), pending: true };
+          state = next;
+          fetch(url, { credentials: 'same-origin', headers: { Accept: 'application/json' } })
+            .then((response) => (response.ok ? response.json() : null))
+            .catch(() => null)
+            .then((data) => {
+              if (state !== next) return;
+              next.pending = false;
+              next.at = Date.now();
+              const value = parse(data);
+              if (value) next.value = value;
+              else log('размер MR: ' + what + ' не распознан');
+              sync();
+            });
+        }
+        return state.value;
+      },
+      expire() {
+        state.at = 0;
+      }
+    };
+  }
+
+  function countNumber(value) {
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+  }
+
+  // diffs_metadata.json — метаданные диффа, их грузит вкладка Changes: строки +/− и список файлов
+  // с флагами new_file / deleted_file. Храним сырые файлы — шаблоны исключений применяются при отрисовке
+  function parseDiffsMetadata(data) {
+    if (!data || !Array.isArray(data.diff_files)) return null;
+    const files = data.diff_files.map((file) => {
+      const renamed = !!file.renamed_file || (!!file.old_path && !!file.new_path && file.old_path !== file.new_path);
+      return {
+        paths: [file.new_path, file.old_path].filter(Boolean),
+        kind: file.new_file ? 'added' : file.deleted_file ? 'deleted' : renamed ? 'renamed' : 'modified',
+        additions: countNumber(file.added_lines) || 0,
+        deletions: countNumber(file.removed_lines) || 0
+      };
+    });
+    // real_size — строка: «12», а в урезанном MR — «1000+»
+    const realSize = parseInt(data.real_size, 10);
+    return {
+      files,
+      total: Number.isFinite(realSize) ? Math.max(realSize, files.length) : files.length,
+      overflow: /\+$/.test(String(data.real_size || '')) || realSize > files.length,
+      // Итоги MR точнее суммы по файлам: в большом MR список файлов урезан
+      additions: countNumber(data.added_lines),
+      deletions: countNumber(data.removed_lines)
+    };
+  }
+
+  // Метки MR из API — нужны, только если в настройках заданы метки массовой правки
+  function parseMrLabels(data) {
+    return data && Array.isArray(data.labels) ? data.labels.map((l) => String(typeof l === 'string' ? l : l && l.name)) : null;
+  }
+
+  const diffsCache = createJsonCache(parseDiffsMetadata, 'diffs_metadata.json');
+  const labelsCache = createJsonCache(parseMrLabels, 'ответ API о метках MR');
+
+  // https://gitlab.example.com/group/sub/project/-/merge_requests/12 -> …/api/v4/projects/group%2Fsub%2Fproject/merge_requests/12
+  function mrApiUrl(mrUrl) {
+    const m = new URL(mrUrl).pathname.match(/^\/(.+?)\/-\/merge_requests\/(\d+)/);
+    return m ? location.origin + '/api/v4/projects/' + encodeURIComponent(m[1]) + '/merge_requests/' + m[2] : '';
+  }
+
+  // Метки в сайдбаре — ссылки на список MR с фильтром ?label_name[]=…: добавленная метка видна сразу, без API.
+  // Только сайдбар: такие же ссылки бывают в описании и комментариях
+  function domMrLabels() {
+    const labels = new Set();
+    for (const link of document.querySelectorAll('a[href*="label_name"]')) {
+      if (!link.closest('aside, .right-sidebar, .issuable-sidebar')) continue;
+      try {
+        const params = new URL(link.getAttribute('href'), location.origin).searchParams;
+        for (const name of [...params.getAll('label_name[]'), ...params.getAll('label_name')]) labels.add(name);
+      } catch (e) { /* битая ссылка — пропускаем */ }
+    }
+    return labels;
+  }
+
+  // Первая метка MR из настройки «Метки массовой правки» или ''
+  function bulkLabel(mrUrl) {
+    const wanted = parseList(settings && settings.sizeBulkLabels);
+    if (!wanted.length) return '';
+    const own = domMrLabels();
+    const apiUrl = mrApiUrl(mrUrl);
+    const api = (apiUrl && labelsCache.get(apiUrl)) || [];
+    for (const label of [...own, ...api]) {
+      if (wanted.some((name) => name.toLowerCase() === label.toLowerCase())) return label;
+    }
+    return '';
+  }
+
+  function parseList(value) {
+    return String(value || '').split(/[\n,]+/).map((p) => p.trim()).filter(Boolean);
+  }
+
+  // Шаблон пути: «*» — любые символы, кроме «/», «**» — любые, «?» — один символ.
+  // Без «/» сравнивается с именем файла (composer.lock, *.min.js), с «/» — с путём от корня репозитория
+  function globRegex(pattern) {
+    const source = pattern.replace(/^\/+/, '').replace(/\*\*|[*?]|[.+^${}()|[\]\\]/g, (token) =>
+      token === '**' ? '.*' : token === '*' ? '[^/]*' : token === '?' ? '[^/]' : '\\' + token);
+    return { byName: !pattern.includes('/'), re: new RegExp('^' + source + '$') };
+  }
+
+  function isIgnoredFile(file, globs) {
+    return file.paths.some((path) => globs.some(({ byName, re }) => re.test(byName ? path.split('/').pop() : path)));
+  }
+
+  // Счётчики без файлов из «Не учитывать в размере»: их строки вычитаются из итогов MR
+  function sizeStats(diffs) {
+    const globs = parseList(settings && settings.sizeIgnore).map(globRegex);
+    const stats = { modified: 0, added: 0, deleted: 0, renamed: 0 };
+    const ignored = { files: 0, additions: 0, deletions: 0 };
+    let additions = 0;
+    let deletions = 0;
+    for (const file of diffs.files) {
+      if (globs.length && isIgnoredFile(file, globs)) {
+        ignored.files++;
+        ignored.additions += file.additions;
+        ignored.deletions += file.deletions;
+        continue;
+      }
+      stats[file.kind]++;
+      additions += file.additions;
+      deletions += file.deletions;
+    }
+    if (diffs.additions !== null) additions = Math.max(0, diffs.additions - ignored.additions);
+    if (diffs.deletions !== null) deletions = Math.max(0, diffs.deletions - ignored.deletions);
+    return {
+      ...stats,
+      files: diffs.total - ignored.files,
+      filesOverflow: diffs.overflow,
+      additions,
+      deletions,
+      ignored
+    };
+  }
+
+  function pluralFiles(n) {
+    const mod10 = n % 10;
+    const mod100 = n % 100;
+    if (mod10 === 1 && mod100 !== 11) return 'файл';
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'файла';
+    return 'файлов';
+  }
+
+  function sizeItem(className, text) {
+    const span = document.createElement('span');
+    span.className = className;
+    span.textContent = text;
+    return span;
+  }
+
+  const SIZE_LABELS = ['S', 'M', 'L', 'XL'];
+  // Вопрос к большому MR — без обвинения: бывают и оправданные большие MR
+  const SIZE_ASKS = {
+    L: 'Большой MR — можно разбить?',
+    XL: 'Очень большой MR — точно одним куском?'
+  };
+
+  // «100, 400, 1000» -> [100, 400, 1000]: три растущих положительных порога, иначе — по умолчанию
+  function sizeThresholds(value) {
+    const list = String(value || '').split(/[\s,;]+/).filter(Boolean).map(Number);
+    const valid = list.length === 3 && list.every((n, i) => Number.isInteger(n) && n > 0 && (i === 0 || n > list[i - 1]));
+    return valid ? list : sizeThresholds(feature.defaults.sizeThresholds);
+  }
+
+  // Метка по числу изменённых строк (+ и −): S — меньше первого порога, …, XL — от третьего
+  function sizeLabel(stats) {
+    const changed = stats.additions + stats.deletions;
+    const limits = sizeThresholds(settings && settings.sizeThresholds);
+    let index = limits.findIndex((limit) => changed < limit);
+    if (index < 0) index = limits.length;
+    const ranges = SIZE_LABELS.map((label, i) =>
+      label + ' — ' + (i === 0 ? 'до ' + limits[0] : i < limits.length ? limits[i - 1] + '–' + (limits[i] - 1) : 'от ' + limits[i - 1]));
+    return {
+      label: SIZE_LABELS[index],
+      hint: 'Изменено строк: ' + changed + '. ' + ranges.join(', ')
+    };
+  }
+
+  // «[M] 12 файлов: изменено 8, добавлено 3, удалено 1 · строки +340 −58 · без учёта: … · Большой MR — …».
+  // Пробелы между частями — для копирования текста, раскладку держит gap
+  function renderSize(block, stats, bulk) {
+    const size = sizeLabel(stats);
+    const key = JSON.stringify([stats, size, bulk]);
+    if (block.dataset.glmrhStats === key) return;
+    block.dataset.glmrhStats = key;
+
+    const filesText = stats.files + (stats.filesOverflow ? '+' : '') + ' ' + pluralFiles(stats.files) + ':';
+    const parts = [['изменено', stats.modified], ['добавлено', stats.added], ['удалено', stats.deleted], ['переименовано', stats.renamed]]
+      .filter(([, n], i) => i === 0 || n > 0)
+      .map(([label, n]) => label + ' ' + n);
+
+    const files = sizeItem('glmrh-mr-size-files', filesText);
+    if (stats.filesOverflow) {
+      files.title = 'MR слишком большой: GitLab отдал не все файлы, разбивка по файлам — по загруженным';
+    }
+    const lines = sizeItem('glmrh-mr-size-lines', 'строки ');
+    lines.append(
+      sizeItem('glmrh-mr-size-add', '+' + stats.additions),
+      ' ',
+      sizeItem('glmrh-mr-size-del', '−' + stats.deletions)
+    );
+    const icon = buildIcon(ICON_DOC_CHANGES);
+    icon.setAttribute('class', 's16 gl-icon glmrh-mr-size-icon');
+    const badge = sizeItem('glmrh-mr-size-badge glmrh-mr-size-' + (bulk ? 'bulk' : size.label.toLowerCase()), size.label);
+    badge.title = size.hint;
+
+    const items = [icon, badge, files, sizeItem('glmrh-mr-size-detail', parts.join(', ')), sep(), lines];
+    if (stats.ignored.files) {
+      const { files: n, additions, deletions } = stats.ignored;
+      const ignored = sizeItem('glmrh-mr-size-ignored', 'без учёта: ' + n + ' ' + pluralFiles(n) + ', +' + additions + ' −' + deletions);
+      ignored.title = 'Файлы из настройки «Не учитывать в размере»: ' + parseList(settings.sizeIgnore).join(', ');
+      items.push(sep(), ignored);
+    }
+    if (bulk) {
+      const note = sizeItem('glmrh-mr-size-note', 'массовая правка');
+      note.title = 'Метка «' + bulk + '»: однотипная массовая правка — размер MR не повод его разбивать';
+      items.push(sep(), note);
+    } else if (SIZE_ASKS[size.label]) {
+      items.push(sep(), sizeItem('glmrh-mr-size-ask glmrh-mr-size-ask-' + size.label.toLowerCase(), SIZE_ASKS[size.label]));
+    }
+    block.replaceChildren(...items.flatMap((item, i) => (i ? [' ', item] : [item])));
+  }
+
+  function sep() {
+    return sizeItem('glmrh-mr-size-sep', '·');
+  }
+
+  // Отдельный блок сразу под строкой «X requested to merge … into …» — над рядом кнопок, если он есть
+  function mountSize() {
+    const anchor = sizeOnThisMr() ? findHeaderAnchor() : null;
+    const diffs = anchor ? diffsCache.get(getMrUrl() + '/diffs_metadata.json') : null;
+    if (!diffs) {
+      removeById(SIZE_ID);
+      return;
+    }
+
+    let block = document.getElementById(SIZE_ID);
+    if (!block) {
+      block = document.createElement('div');
+      block.id = SIZE_ID;
+      block.className = 'glmrh-mr-size';
+    }
+    renderSize(block, sizeStats(diffs), bulkLabel(getMrUrl()));
+    const actions = document.getElementById(ACTIONS_ID);
+    const target = actions && actions.nextElementSibling === anchor ? actions : anchor;
+    if (block.nextElementSibling !== target) target.insertAdjacentElement('beforebegin', block);
+  }
+
   // Ряд кнопок встаёт между строкой «X requested to merge … into …» и вкладками MR.
   // Липкий дубль шапки (#js-merge-sticky-header) пропускаем.
   function findHeaderAnchor() {
@@ -1025,7 +1294,7 @@
   }
 
   function unmount() {
-    for (const id of [BTN_ID, JIRA_BTN_ID, STAGE_BTN_ID, CONFLICT_ID, REQUEST_NOTICE_ID, ACTIONS_ID]) removeById(id);
+    for (const id of [BTN_ID, JIRA_BTN_ID, STAGE_BTN_ID, CONFLICT_ID, REQUEST_NOTICE_ID, ACTIONS_ID, SIZE_ID]) removeById(id);
   }
 
   // ---------- список merge requests ----------
@@ -1633,6 +1902,7 @@
   let stageButtonEnabled = feature.defaults.stageButton;
   let prefixButtonsEnabled = feature.defaults.commentPrefixButtons;
   let mergeConfirmEnabled = feature.defaults.mergeConfirm;
+  let sizeBlockEnabled = feature.defaults.sizeBlock;
   let myUsernames = [];
   let scheduled = false;
 
@@ -1650,6 +1920,11 @@
     return enabled && isMrPage() && stageButtonEnabled;
   }
 
+  // Размер MR важен и автору, и ревьюеру — фильтр «Только мои MR» не применяем
+  function sizeOnThisMr() {
+    return enabled && isMrPage() && sizeBlockEnabled;
+  }
+
   // Префиксы нужны как раз на ревью чужих MR — фильтр «Только мои MR» не применяем
   function prefixesOnThisMr() {
     return enabled && isMrPage() && prefixButtonsEnabled;
@@ -1664,6 +1939,7 @@
     if ('stageButton' in values) stageButtonEnabled = !!values.stageButton;
     if ('commentPrefixButtons' in values) prefixButtonsEnabled = !!values.commentPrefixButtons;
     if ('mergeConfirm' in values) mergeConfirmEnabled = !!values.mergeConfirm;
+    if ('sizeBlock' in values) sizeBlockEnabled = !!values.sizeBlock;
     if ('protectedBranches' in values) protectedPatterns = branchPatterns(values.protectedBranches);
     if ('myUsername' in values) {
       myUsernames = parseUsernames(values.myUsername);
@@ -1682,6 +1958,7 @@
         takeStageRequest();
         takePipelineRequest();
         mount();
+        mountSize();
         renderProtectedBadges();
         renderProtectedMerge();
       }
@@ -1758,6 +2035,8 @@
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible') return;
     conflictsState.at = 0;
+    diffsCache.expire();
+    labelsCache.expire();
     sync();
   });
 

@@ -166,6 +166,42 @@
 </fieldset>
 
 <fieldset>
+  <legend>Размер MR</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="mr-sizeBlock" data-field="sizeBlock">
+    <label for="mr-sizeBlock">Размер MR под строкой «requested to merge … into …»</label>
+  </div>
+  <p class="hint">
+    Сколько файлов в MR (изменено, добавлено, удалено, переименовано) и строк (+ добавлено, − удалено) —
+    те же данные, что на вкладке Changes. Обновляется раз в минуту и при возврате на вкладку.
+    Показывается на всех MR, независимо от «Только мои MR».
+  </p>
+  <label for="mr-sizeThresholds">Пороги меток S / M / L / XL</label>
+  <input type="text" id="mr-sizeThresholds" data-field="sizeThresholds" placeholder="100, 400, 1000" spellcheck="false">
+  <p class="hint">
+    Три числа через запятую — изменённые строки (+ и − вместе): меньше первого — <b>S</b>, меньше второго — <b>M</b>,
+    меньше третьего — <b>L</b>, остальное — <b>XL</b>. Пусто или с ошибкой — <code>100, 400, 1000</code>.
+    У <b>L</b> и <b>XL</b> рядом вопрос: «Большой MR — можно разбить?» / «Очень большой MR — точно одним куском?».
+  </p>
+  <label for="mr-sizeIgnore">Не учитывать в размере</label>
+  <textarea id="mr-sizeIgnore" data-field="sizeIgnore" rows="4" spellcheck="false" placeholder="composer.lock&#10;package-lock.json&#10;*.min.js&#10;database/schema/**"></textarea>
+  <p class="hint">
+    Сгенерированные файлы, которые раздувают MR. Шаблон на строку или через запятую:
+    <code>*</code> — любые символы, кроме <code>/</code>, <code>**</code> — любые, <code>?</code> — один символ.
+    Шаблон без <code>/</code> сравнивается с именем файла (<code>composer.lock</code>, <code>*.min.js</code>),
+    с <code>/</code> — с путём от корня репозитория (<code>database/schema/**</code>).
+    Такие файлы и их строки не входят в счётчики и метку, рядом — «без учёта: N файлов, +… −…». Пусто — учитываются все.
+  </p>
+  <label for="mr-sizeBulkLabels">Метки массовой правки</label>
+  <input type="text" id="mr-sizeBulkLabels" data-field="sizeBulkLabels" placeholder="bulk-change" spellcheck="false">
+  <p class="hint">
+    Метки GitLab через запятую, регистр не важен. MR с такой меткой — оправданно большой (например, перенос класса
+    поменял импорты в сотнях файлов): метка размера серая, вместо вопроса — «массовая правка».
+    Метки читаются из сайдбара MR и из API GitLab. Пусто — не используется.
+  </p>
+</fieldset>
+
+<fieldset>
   <legend>Мерж в защищённые ветки</legend>
   <div class="checkbox">
     <input type="checkbox" id="mr-mergeConfirm" data-field="mergeConfirm">

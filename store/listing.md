@@ -27,6 +27,7 @@ Merge requests (GitLab, включая self-hosted):
 • Фильтр «только мои MR».
 • Кнопка «Открыть задачу в Jira» по ключу задачи из ветки или названия MR.
 • Кнопка «Создать MR на stage», когда MR готов: не Draft, без конфликтов, с апрувами и без нерешённых тредов.
+• Размер MR в шапке: метка S / M / L / XL, сколько файлов изменено, добавлено и удалено, сколько строк +/−.
 • Кнопки префиксов комментариев (blocking:, nit: — свои, со своими цветами): префикс в начало комментария в один клик.
 • Защита от случайного мержа в main, master, production и другие ветки из списка: кнопки Merge красные,
   мерж — только после подтверждения с 10-секундным отсчётом.
@@ -77,6 +78,7 @@ Merge requests (GitLab, including self-hosted):
 • "Only my MRs" filter.
 • "Open Jira issue" button using the issue key from the branch or MR title.
 • "Create MR to stage" button once the MR is ready: not a Draft, no conflicts, approved, no unresolved threads.
+• MR size in the header: S / M / L / XL label, files changed, added and deleted, lines +/−.
 • Comment prefix buttons (blocking:, nit: — your own, in your own colors): put a prefix at the start of a comment in one click.
 • Protection against accidental merges into main, master, production and other branches from your list: Merge buttons
   turn red, and merging needs a confirmation with a 10-second countdown.

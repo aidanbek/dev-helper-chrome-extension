@@ -12,15 +12,110 @@
 
 /* Та же ширина, что у шапки MR при fluid-раскладке */
 .container-fluid:not(.container-limited) .glmrh-actions,
-.container-fluid.rd-page-container .glmrh-actions {
+.container-fluid.rd-page-container .glmrh-actions,
+.container-fluid:not(.container-limited) .glmrh-mr-size,
+.container-fluid.rd-page-container .glmrh-mr-size {
   margin-left: auto;
   margin-right: auto;
   max-width: calc(1296px - var(--container-padding-x, 0px) * 2);
 }
 
+/* Размер MR — строка под «X requested to merge … into …», над рядом кнопок */
+.glmrh-mr-size {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding-bottom: 12px;
+  font-size: .875rem;
+  line-height: 1.5;
+  color: var(--gl-text-color-subtle, #626168);
+}
+
+.glmrh-mr-size-icon {
+  flex: none;
+  color: var(--gl-icon-color-subtle, #737278);
+}
+
+/* Метка размера — как бейдж GitLab: цвет по размеру */
+.glmrh-mr-size-badge {
+  min-width: 24px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+  cursor: default;
+}
+
+.glmrh-mr-size-s {
+  color: var(--gl-feedback-success-text-color, #0a4020);
+  background: var(--gl-feedback-success-background-color, #ecf4ee);
+}
+
+.glmrh-mr-size-m {
+  color: var(--gl-feedback-info-text-color, #0b5cad);
+  background: var(--gl-feedback-info-background-color, #e9f3fc);
+}
+
+.glmrh-mr-size-l {
+  color: var(--gl-feedback-warning-text-color, #8f4700);
+  background: var(--gl-feedback-warning-background-color, #fff4e1);
+}
+
+.glmrh-mr-size-xl {
+  color: var(--gl-feedback-danger-text-color, #ae1800);
+  background: var(--gl-feedback-danger-background-color, #fcf1ef);
+}
+
+/* Массовая правка по метке GitLab — нейтральный серый вместо цвета размера */
+.glmrh-mr-size-bulk {
+  color: var(--gl-text-color-subtle, #626168);
+  background: var(--gl-background-color-strong, #ececef);
+}
+
+/* Вопрос к большому MR — цветом метки размера */
+.glmrh-mr-size-ask {
+  font-weight: 600;
+}
+
+.glmrh-mr-size-ask-l {
+  color: var(--gl-feedback-warning-text-color, #8f4700);
+}
+
+.glmrh-mr-size-ask-xl {
+  color: var(--gl-feedback-danger-text-color, #ae1800);
+}
+
+.glmrh-mr-size-ignored,
+.glmrh-mr-size-note {
+  font-style: italic;
+  cursor: default;
+}
+
+.glmrh-mr-size-files,
+.glmrh-mr-size-add,
+.glmrh-mr-size-del {
+  font-weight: 600;
+}
+
+.glmrh-mr-size-files {
+  color: var(--gl-text-color-default, #3a383f);
+}
+
+.glmrh-mr-size-add {
+  color: var(--gl-text-color-success, #108548);
+}
+
+.glmrh-mr-size-del {
+  color: var(--gl-text-color-danger, #dd2b0e);
+}
+
 /* Шапка MR прилипла к верху при прокрутке — ряд не нужен, экономим высоту */
 @container sticky-header scroll-state(stuck: top) {
-  .glmrh-actions { display: none; }
+  .glmrh-actions,
+  .glmrh-mr-size { display: none; }
 }
 
 .glmrh-done,
