@@ -41,6 +41,28 @@ test.describe('сохранение', () => {
   });
 });
 
+test('настройки размера MR сохраняются в storage', async ({ optionsPage, ext }) => {
+  const section = await openSection(optionsPage, 'merge-requests');
+  await section.getByLabel('Размер MR под строкой «requested to merge … into …»').uncheck();
+  await section.getByLabel('Пороги меток S / M / L / XL').fill('50, 200, 800');
+  await section.getByLabel('Не учитывать в размере').fill('composer.lock\n*.min.js');
+  await section.getByLabel('Метки массовой правки').fill('bulk-change');
+  await optionsPage.locator('#save').click();
+  await expect(optionsPage.locator('#status')).toHaveText('Сохранено');
+
+  expect(await ext.getStorage([
+    'mergeRequests.sizeBlock',
+    'mergeRequests.sizeThresholds',
+    'mergeRequests.sizeIgnore',
+    'mergeRequests.sizeBulkLabels'
+  ])).toEqual({
+    'mergeRequests.sizeBlock': false,
+    'mergeRequests.sizeThresholds': '50, 200, 800',
+    'mergeRequests.sizeIgnore': 'composer.lock\n*.min.js',
+    'mergeRequests.sizeBulkLabels': 'bulk-change'
+  });
+});
+
 test.describe('сайты фичи', () => {
   test('адрес приводится к хосту, сохраняется сразу и регистрирует content script', async ({ optionsPage, ext }) => {
     const section = await openSection(optionsPage, 'merge-requests');
