@@ -713,7 +713,7 @@ options/
   backup.js                    раздел «Импорт и экспорт»: кнопки, превью, применение
 scripts/build.sh               zip для Chrome Web Store → dist/
 eslint.config.js               правила линтера
-tests/e2e/                     E2E-тесты (Playwright), фикстуры и фейковый GitLab — в support/
+tests/e2e/                     E2E-тесты (Playwright), фикстуры, фейковые GitLab и Jira — в support/
 store/listing.md               тексты и ответы для Developer Dashboard (в пакет не входит)
 PRIVACY.md                     политика конфиденциальности
 ```
