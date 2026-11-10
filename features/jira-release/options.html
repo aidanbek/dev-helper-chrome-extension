@@ -44,3 +44,14 @@
   <input type="text" id="jira-release-mrField" data-field="mrField" placeholder="Merge Request" spellcheck="false">
   <p class="hint">Название поля, как в задаче, без учёта регистра. Пусто — «Merge Request».</p>
 </fieldset>
+<fieldset>
+  <legend>Чек-лист</legend>
+  <div class="checkbox">
+    <input type="checkbox" id="jira-release-rowChecklist" data-field="rowChecklist">
+    <label for="jira-release-rowChecklist">Чекбокс в начале строк списка</label>
+  </div>
+  <p class="hint">
+    Отметить задачу для себя, например при проверке релиза: строка приглушается, в панели — «отмечено N из M».
+    Больше ничего не делает и никуда не сохраняется — перезагрузка страницы или переход на другой релиз сбрасывают отметки.
+  </p>
+</fieldset>

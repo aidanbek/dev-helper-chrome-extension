@@ -5,6 +5,24 @@
   display: none !important;
 }
 
+/* Чекбокс чек-листа — первым в строке */
+.dhr-row-check {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin: 0 8px 0 0;
+  vertical-align: middle;
+  accent-color: var(--ds-background-brand-bold, #0c66e4);
+  cursor: pointer;
+}
+
+/* Отмеченная задача приглушена; чекбокс — нет */
+:not(tr)[data-dhr-ticked] > :not(.dhr-row-check),
+tr[data-dhr-ticked] > :not(:first-child),
+tr[data-dhr-ticked] > :first-child > :not(.dhr-row-check) {
+  opacity: 0.5;
+}
+
 /* Метки задачи в строке списка: все и целиком — не сжимаются, при нехватке места сжимается название */
 .dhr-row-labels {
   display: inline-flex;

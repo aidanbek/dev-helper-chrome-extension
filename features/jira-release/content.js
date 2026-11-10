@@ -11,10 +11,13 @@
   const BAR_CLASS = 'dhr-labels';
   const ROW_LABELS_CLASS = 'dhr-row-labels';
   const ROW_MRS_CLASS = 'dhr-row-mrs';
+  const ROW_CHECK_CLASS = 'dhr-row-check';
   // Наши блоки в строках: в них не ищем ключи задач и название
-  const OWN_SELECTOR = '.' + BAR_CLASS + ', .' + ROW_LABELS_CLASS + ', .' + ROW_MRS_CLASS;
+  const OWN_SELECTOR = '.' + BAR_CLASS + ', .' + ROW_LABELS_CLASS + ', .' + ROW_MRS_CLASS + ', .' + ROW_CHECK_CLASS;
   // Атрибут, а не класс: React перезаписывает className строк при перерисовке, чужие атрибуты не трогает
   const HIDDEN_ATTR = 'data-dhr-hidden';
+  // Отмеченная в чек-листе строка
+  const TICKED_ATTR = 'data-dhr-ticked';
   const normalize = DevHelper.normalize;
   const { escapeHtml } = DevHelper.clipboard;
   const { NO_LABELS, NO_REQUIRED, isRequired, parseRequired, setHidden } = DevHelper.labelFilter;
@@ -50,6 +53,8 @@
   let copiedUntil = 0;
   // Ключи со ссылками на странице, которых не было в ответе: по каждому перезапрашиваем не больше одного раза
   let checked = new Set();
+  // Чек-лист: отмеченные задачи. Только в памяти страницы — перезагрузка и другой релиз сбрасывают
+  let ticked = new Set();
 
   function versionId() {
     const m = location.pathname.match(VERSION_RE);
@@ -281,6 +286,7 @@
     // Счётчики — по всем задачам релиза; в списке Jira их может быть меньше, пока он не догружен
     const parts = [];
     if (filter.size) parts.push('Показано ' + shown + ' из ' + total);
+    if (settings.rowChecklist && ticked.size) parts.push('отмечено ' + ticked.size + ' из ' + total);
     if (onPage < total) parts.push('в списке пока ' + onPage + ' из ' + total + ' — счётчики и копирование по всем');
     filter.setStatus(bar, parts.join('; '), false);
 
@@ -410,6 +416,40 @@
     return block;
   }
 
+  // Чекбокс чек-листа — первым в строке (в таблице — в первой ячейке). Ничего не делает, только отмечает задачу
+  function renderRowCheck(row, key, show) {
+    let box = row.querySelector('.' + ROW_CHECK_CLASS);
+    if (!show) {
+      if (box) box.remove();
+      row.removeAttribute(TICKED_ATTR);
+      return;
+    }
+    const host = row.tagName === 'TR' ? row.firstElementChild : row;
+    if (!host) return;
+    if (!box) box = buildRowCheck();
+    if (host.firstElementChild !== box) host.insertAdjacentElement('afterbegin', box);
+    box.dataset.key = key;
+    const on = ticked.has(key);
+    if (box.checked !== on) box.checked = on;
+    if (row.hasAttribute(TICKED_ATTR) !== on) row.toggleAttribute(TICKED_ATTR, on);
+  }
+
+  function buildRowCheck() {
+    const box = document.createElement('input');
+    box.type = 'checkbox';
+    box.className = ROW_CHECK_CLASS;
+    box.title = 'Отметить задачу — только для себя, сбрасывается при перезагрузке страницы';
+    stopRowEvents(box);
+    box.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const key = box.dataset.key;
+      if (box.checked) ticked.add(key);
+      else ticked.delete(key);
+      sync();
+    });
+    return box;
+  }
+
   function mount() {
     const id = versionId();
     if (id !== version) {
@@ -423,6 +463,7 @@
       mrNote = '';
       filter.reset();
       checked = new Set();
+      ticked = new Set();
       if (id) load(id);
     }
     if (!id || !labelsByKey) return;
@@ -454,15 +495,19 @@
       setHidden(row, HIDDEN_ATTR, !matches(key, required));
       renderRowLabels(row, key, required, settings.rowLabels);
       renderRowMrs(row, key, settings.rowMrLinks);
+      renderRowCheck(row, key, settings.rowChecklist);
     });
-    // Блоки меток и MR в строках, которые больше не строки списка
-    document.querySelectorAll('.' + ROW_LABELS_CLASS + ', .' + ROW_MRS_CLASS).forEach((block) => {
+    // Блоки меток, MR и чекбоксы в строках, которые больше не строки списка
+    document.querySelectorAll('.' + ROW_LABELS_CLASS + ', .' + ROW_MRS_CLASS + ', .' + ROW_CHECK_CLASS).forEach((block) => {
       const row = Array.from(rows.keys()).find((candidate) => candidate.contains(block));
       if (!row) block.remove();
     });
     // Строки, которые больше не строки списка (перерисовка), не должны остаться скрытыми
     document.querySelectorAll('[' + HIDDEN_ATTR + ']').forEach((row) => {
       if (!rows.has(row)) row.removeAttribute(HIDDEN_ATTR);
+    });
+    document.querySelectorAll('[' + TICKED_ATTR + ']').forEach((row) => {
+      if (!rows.has(row)) row.removeAttribute(TICKED_ATTR);
     });
 
     renderBar(bar, chips, shown, keys.length, new Set(rows.values()).size, required);
@@ -485,6 +530,7 @@
   function unmount() {
     document.querySelectorAll(OWN_SELECTOR).forEach((el) => el.remove());
     document.querySelectorAll('[' + HIDDEN_ATTR + ']').forEach((row) => row.removeAttribute(HIDDEN_ATTR));
+    document.querySelectorAll('[' + TICKED_ATTR + ']').forEach((row) => row.removeAttribute(TICKED_ATTR));
   }
 
   // ---------- жизненный цикл ----------
