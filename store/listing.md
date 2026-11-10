@@ -38,6 +38,7 @@ Merge requests (GitLab, включая self-hosted):
   чтобы запустить preview-окружение.
 • Метки задач под названием в таблицах на странице задачи (Child work items эпика): все, обязательные — первыми;
   над таблицей — фильтр по меткам, как в релизе.
+• Предупреждение, если у задачи нет ни одной из обязательных меток.
 • Статус, метки и название поля с MR настраиваются.
 
 Релизы Jira (Jira Cloud):
@@ -47,6 +48,7 @@ Merge requests (GitLab, включая self-hosted):
 • Метки задач прямо в строках списка релиза — все, по алфавиту; клик по метке фильтрует список.
 • Кнопка «Посмотреть MR» из поля задачи прямо в строках списка релиза, справа от статуса.
 • Копирование отфильтрованных задач («KEY — название») и ссылка на тот же отбор в поиске Jira.
+• Чек-лист: чекбокс в строке, чтобы отметить задачу для себя при проверке релиза; сбрасывается перезагрузкой страницы.
 
 Переходы:
 • Переход с текущей страницы на связанную по вашим правилам: id, slug или окружение из адреса
@@ -86,6 +88,7 @@ Jira issues (Jira Cloud):
   to start a preview environment.
 • Issue labels under the summary in tables on an issue page (an epic's Child work items): all of them,
   required ones first; above the table — a labels filter, as on a release page.
+• A warning when an issue has none of the required labels.
 • Status, labels and the MR field name are configurable.
 
 Jira releases (Jira Cloud):
@@ -95,6 +98,7 @@ Jira releases (Jira Cloud):
 • Issue labels right in the release list rows — all of them, alphabetically; click a label to filter.
 • "View MR" button for the MR from the issue field right in the release list rows, next to the status.
 • Copy the filtered issues ("KEY — summary") and open the same selection in Jira search.
+• Checklist: a checkbox in each row to tick off issues for yourself while checking a release; reloading the page clears it.
 
 Redirects:
 • Jump from the current page to a related one by your rules: the id, slug or environment from the URL
@@ -106,6 +110,20 @@ Settings import and export — as a file, via the clipboard or from a URL: a bac
 
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
+
+### Что нового в 1.8.0 / What's new in 1.8.0
+
+RU:
+• Релизы Jira: чек-лист — чекбокс в начале каждой строки списка задач, чтобы отметить задачу для себя при проверке релиза.
+  Отмеченные строки приглушаются, в панели — «отмечено N из M». Отметки никуда не сохраняются и сбрасываются перезагрузкой страницы.
+• Задачи Jira: предупреждение, если у задачи нет ни одной из обязательных меток; в списке меток задачи обязательные выделены.
+• В фильтре меток в таблицах задач чип «без обязательных меток» идёт первым.
+
+EN:
+• Jira releases: a checklist — a checkbox at the start of each work item row to tick off issues for yourself while checking a release.
+  Ticked rows are dimmed, the panel shows "N of M ticked". Ticks are not saved anywhere and are cleared when the page reloads.
+• Jira issues: a warning when an issue has none of the required labels; required labels are highlighted in the issue's labels list.
+• In the labels filter of issue tables, the "no required labels" chip comes first.
 
 ### Что нового в 1.7.1 / What's new in 1.7.1
 
@@ -287,6 +305,12 @@ on these sites and the page content is not read.
 
 1. Поднять `version` в `manifest.json` (Web Store не принимает повторно ту же версию).
 2. `./scripts/build.sh` → загрузить `dist/dev-helper-<version>.zip`.
+
+### Для 1.8.0 в Developer Dashboard
+
+- Разрешения и обработка данных не менялись — Single purpose, Permission justification и Privacy policy оставить как есть.
+- Description — дописать строки про предупреждение об обязательных метках и чек-лист релиза (тексты выше),
+  при желании — блок «Что нового в 1.8.0».
 
 ### Для 1.7.1 в Developer Dashboard
 
