@@ -113,6 +113,20 @@ Settings import and export — as a file, via the clipboard or from a URL: a bac
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
 
+### Что нового в 1.9.0 / What's new in 1.9.0
+
+RU:
+• Размер MR в шапке, под строкой «requested to merge … into …»: метка S / M / L / XL по изменённым строкам,
+  сколько файлов изменено, добавлено, удалено и переименовано, строки +/−. У L и XL — вопрос, можно ли разбить MR.
+• «Не учитывать в размере»: шаблоны путей сгенерированных файлов (lock-файлы, минифицированный код), которые не входят в размер.
+• «Метки массовой правки»: MR с такой меткой GitLab считается оправданно большим — вместо вопроса «массовая правка».
+
+EN:
+• MR size in the header, under the "requested to merge … into …" line: an S / M / L / XL label by changed lines,
+  files changed, added, deleted and renamed, lines +/−. L and XL ask whether the MR could be split.
+• "Exclude from size": path patterns for generated files (lock files, minified code) that don't count towards the size.
+• "Bulk change labels": an MR with such a GitLab label counts as justifiably large — "bulk change" instead of the question.
+
 ### Что нового в 1.8.0 / What's new in 1.8.0
 
 RU:
