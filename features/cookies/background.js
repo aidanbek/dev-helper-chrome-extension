@@ -5,6 +5,8 @@
 //                                                           Cookie нет, а строка из списка значений — создаётся
 //   { type: 'cookies.add', tabId, cookie: { name, value, domain } } → новая сессионная cookie на пути /
 //   { type: 'cookies.remove', tabId, cookie }             → удалить
+//   { type: 'cookies.clear', tabId }                      → удалить все cookie, которые видит сайт → { ok, removed }
+//   { type: 'cookies.clearCache', tabId }                 → очистить HTTP-кэш и Cache Storage источника вкладки
 //   { type: 'cookies.addValue' / 'cookies.removeValue', tabId, cookie: { name, domain }, value } → список значений
 // status: ok | disabled | unsupported (не http/https) | no-site (сайт не добавлен) | no-access
 //
@@ -197,6 +199,23 @@
     return { ok: true };
   }
 
+  // Все cookie, которые видит сайт, — и доменные (".example.com"): их видят и другие поддомены.
+  // Списки значений не трогаем
+  async function clearCookies(tab) {
+    const site = await requireSite(tab);
+    const cookies = await visibleCookies(site.host);
+    await Promise.all(cookies.map((cookie) =>
+      chrome.cookies.remove({ url: cookieUrl(cookie), name: cookie.name, storeId: cookie.storeId })));
+    return { ok: true, removed: cookies.length };
+  }
+
+  // Кэш браузера только для источника вкладки (схема + хост + порт): HTTP-кэш и Cache Storage сервис-воркеров
+  async function clearCache(tab) {
+    const site = await requireSite(tab);
+    await chrome.browsingData.remove({ origins: [site.url.origin] }, { cache: true, cacheStorage: true });
+    return { ok: true };
+  }
+
   // ---------- списки значений ----------
 
   async function saveLists(lists) {
@@ -247,6 +266,8 @@
       case 'cookies.setValue': return setValue(tab, cookie, message.value);
       case 'cookies.add': return addCookie(tab, cookie);
       case 'cookies.remove': return removeCookie(tab, cookie);
+      case 'cookies.clear': return clearCookies(tab);
+      case 'cookies.clearCache': return clearCache(tab);
       case 'cookies.addValue': return addValue(tab, cookie, message.value);
       case 'cookies.removeValue': return removeValue(tab, cookie, message.value);
       default: throw new Error('неизвестное сообщение ' + message.type);
@@ -263,5 +284,5 @@
     return true;
   });
 
-  DevHelper.cookiesBackground = { table,setValue, addCookie, removeCookie, addValue, removeValue };
+  DevHelper.cookiesBackground = { table, setValue, addCookie, removeCookie, clearCookies, clearCache, addValue, removeValue };
 })();

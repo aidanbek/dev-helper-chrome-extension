@@ -57,7 +57,8 @@ Dev Helper does not collect user data, does not store it on external servers, an
   from the address you entered (with that site's cookies, so a private file can be opened); nothing is sent to it.
   No other requests are made; there is no analytics or tracking.
 - **Cookies.** On a site you added and granted access to, the extension shows its cookies in the extension popup
-  and, on your action, changes their values, adds or deletes cookies. Cookie values are never put into the page. The value lists you save are kept in the settings.
+  and, on your action, changes their values, adds or deletes cookies, deletes all of the site's cookies or clears the browser cache
+  for that site only. Cookie values are never put into the page. The value lists you save are kept in the settings.
   Cookie values are never sent anywhere.
 - **External links.** On your action the extension opens links you configured in the settings (Telegram, Jira, "Redirects" links).
   Those sites are governed by their own policies.

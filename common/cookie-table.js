@@ -2,6 +2,7 @@
 // Данные и изменения — через background (сообщения cookies.*), см. features/cookies/background.js.
 // В строке: имя, значение (клик — правка на месте), ✕ — удалить (второй клик подтверждает);
 // под ней — сохранённые значения: клик ставит значение, × убирает его из списка, «+» добавляет.
+// Справа от фильтра — «Удалить все» (второй клик подтверждает) и «Очистить кэш» источника вкладки.
 // Внизу — строка добавления cookie. Стили — строкой: окно расширения вставляет их само.
 (() => {
   'use strict';
@@ -13,6 +14,8 @@
   const MONO = 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
   // Сколько ждём второго клика по ✕
   const CONFIRM_DELAY = 3000;
+  // confirmId кнопки «Удалить все»: id строк — другого вида
+  const CLEAR_ID = '*clear*';
 
   const CSS = `
 .ct { font: 13px/1.4 ${FONT}; color: #303030; }
@@ -29,7 +32,10 @@
 }
 .ct-input:focus { outline: none; border-color: #1f75cb; box-shadow: 0 0 0 1px #1f75cb; }
 select.ct-input { font-family: ${FONT}; }
-.ct-filter { margin-bottom: 6px; font-family: ${FONT}; font-size: 13px; }
+.ct-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.ct-filter { flex: 1; font-family: ${FONT}; font-size: 13px; }
+.ct-notice { margin: 6px 0 0; color: #108548; font: 500 12px/1.4 ${FONT}; }
+.ct-notice[hidden] { display: none; }
 .ct-header, .ct-row {
   display: grid;
   grid-template-columns: minmax(90px, 28%) minmax(0, 1fr) auto;
@@ -188,6 +194,8 @@ select.ct-input { font-family: ${FONT}; }
     let filter = '';
     let busy = false;
     let error = '';
+    // Итог последнего действия панели: «Удалено cookie: 3», «Кэш очищен»
+    let notice = '';
     // Строка, где открыта правка значения или поле нового значения списка: { id, mode: 'value' | 'chip' }
     let editing = null;
     let confirmId = null;
@@ -206,13 +214,16 @@ select.ct-input { font-family: ${FONT}; }
     }
 
     // Действие и перезагрузка таблицы; ошибка — внизу таблицы
-    async function act(message) {
+    // done(result) — текст итога при успехе
+    async function act(message, done) {
       busy = true;
       error = '';
+      notice = '';
       render();
       const result = await send(message);
       busy = false;
       if (!result || result.error) error = 'Не удалось: ' + ((result && result.error) || 'нет ответа');
+      else if (done) notice = done(result);
       editing = null;
       await load();
       return !error;
@@ -247,7 +258,9 @@ select.ct-input { font-family: ${FONT}; }
         filter = search.value.trim();
         fillRows();
       });
-      root.append(search);
+      const top = el('div', 'ct-top');
+      top.append(search, clearCookiesButton(), clearCacheButton());
+      root.append(top);
 
       root.append(header());
       const rows = el('div', 'ct-rows');
@@ -266,6 +279,10 @@ select.ct-input { font-family: ${FONT}; }
       const errorEl = el('p', 'ct-error', error);
       errorEl.hidden = !error;
       root.append(errorEl);
+      const noticeEl = el('p', 'ct-notice', notice);
+      noticeEl.hidden = !notice || !!error;
+      noticeEl.setAttribute('role', 'status');
+      root.append(noticeEl);
 
       if (focusRole) {
         const again = root.querySelector('[data-role="' + focusRole + '"]');
@@ -400,6 +417,40 @@ select.ct-input { font-family: ${FONT}; }
         }, CONFIRM_DELAY);
         render();
       });
+      return node;
+    }
+
+    // Все cookie, которые видит сайт; второй клик — подтверждение, как у ✕ в строке
+    function clearCookiesButton() {
+      const confirming = confirmId === CLEAR_ID;
+      const count = state.cookies.filter((cookie) => !cookie.absent).length;
+      const node = button(confirming ? 'ct-btn ct-confirm' : 'ct-btn', confirming ? 'Удалить все?' : 'Удалить все cookie',
+        confirming
+          ? 'Нажмите ещё раз, чтобы удалить ' + count + ' cookie'
+          : 'Удалить все cookie, которые видит сайт, — и доменные: они пропадут и на других поддоменах. Списки значений останутся');
+      node.disabled = busy || !count;
+      node.addEventListener('click', () => {
+        clearTimeout(confirmTimer);
+        if (confirming) {
+          confirmId = null;
+          act({ type: 'cookies.clear' }, (result) => 'Удалено cookie: ' + result.removed);
+          return;
+        }
+        confirmId = CLEAR_ID;
+        confirmTimer = setTimeout(() => {
+          confirmId = null;
+          render();
+        }, CONFIRM_DELAY);
+        render();
+      });
+      return node;
+    }
+
+    function clearCacheButton() {
+      const node = button('ct-btn', 'Очистить кэш',
+        'Очистить кэш браузера для ' + state.host + ': HTTP-кэш и Cache Storage. Cookie и localStorage не трогаются');
+      node.disabled = busy;
+      node.addEventListener('click', () => act({ type: 'cookies.clearCache' }, () => 'Кэш ' + state.host + ' очищен'));
       return node;
     }
 

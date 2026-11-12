@@ -213,6 +213,35 @@ test.describe('окно расширения', () => {
     expect(await cookie(context, 'cart', 'https://' + HOST + '/checkout')).toBeNull();
   });
 
+  test('«Удалить все cookie» — по второму клику, только видимые сайту; списки значений остаются', async ({ page, context, ext, extensionId }) => {
+    await ext.setStorage({ 'cookies.values': [{ name: 'lang', domain: '.example.com', values: ['ru'] }] });
+    const popup = await openPopup(context, page, ext, extensionId);
+    const clear = popup.getByRole('button', { name: 'Удалить все' });
+    await clear.click();
+    await expect(clear).toHaveText('Удалить все?');
+    expect(await cookie(context, 'region')).not.toBeNull();
+    await clear.click();
+    await expect(popup.locator('.ct-notice')).toHaveText('Удалено cookie: 3');
+    // Остаётся строка списка значений — cookie на сайте нет
+    await expect(popup.locator('.ct-row .ct-name')).toHaveText(['lang']);
+    expect(await cookie(context, 'session_id')).toBeNull();
+    expect(await cookie(context, 'region')).toBeNull();
+    expect(await cookie(context, 'cart', 'https://' + HOST + '/checkout')).toBeNull();
+    // Cookie чужого поддомена сайт не видит — она остаётся
+    expect(await cookie(context, 'foreign', 'https://prod.example.com/')).not.toBeNull();
+    expect((await ext.getStorage('cookies.values'))['cookies.values']).toHaveLength(1);
+    // Удалять больше нечего
+    await expect(clear).toBeDisabled();
+  });
+
+  test('«Очистить кэш» — кэш источника вкладки, cookie на месте', async ({ page, context, ext, extensionId }) => {
+    const popup = await openPopup(context, page, ext, extensionId);
+    await popup.getByRole('button', { name: 'Очистить кэш' }).click();
+    await expect(popup.locator('.ct-notice')).toHaveText('Кэш ' + HOST + ' очищен');
+    await expect(popup.locator('.ct-error')).toBeHidden();
+    await expect(popup.locator('.ct-row .ct-name')).toHaveText(['cart', 'region', 'session_id']);
+  });
+
   test('сайт не добавлен — подсказка и кнопка в настройки', async ({ page, context, ext, extensionId }) => {
     await ext.setStorage({ 'cookies.hosts': [] });
     const popup = await openPopup(context, page, ext, extensionId);

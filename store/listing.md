@@ -291,6 +291,12 @@ domain, path or flags. It works only on sites the user added in the settings and
 locally: it is never put into the page and never sent to the developer or any third-party server. Value lists the user
 explicitly saves are stored in chrome.storage.sync with the other settings, so Chrome may sync them across the user's devices.
 
+**browsingData** — EN: The "Cookie" feature has a "Clear cache" button in the extension popup. Only when the user clicks it,
+the extension clears the HTTP cache and Cache Storage of the current tab's origin (scheme, host and port) with
+chrome.browsingData.remove and an origins filter, so a developer can reload a test site without stale files. It works only on
+sites the user added in the settings and granted access to. No other browsing data is read or removed: no history, downloads,
+passwords, cookies of other sites or data of other origins. Nothing is sent anywhere.
+
 **Host permissions** (`optional_host_permissions: *://*/*`, nothing is granted at install) —
 EN: GitLab is often self-hosted on an arbitrary domain, and Jira Cloud lives on a per-company subdomain,
 so the list of sites can't be fixed in the manifest. The user adds their GitLab and Jira addresses
