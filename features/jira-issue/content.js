@@ -41,6 +41,10 @@
   const STATUS_BUTTON = '[data-testid="issue-field-status.ui.status-view.status-button.status-button"]';
   const STATUS_TEXT = '[data-testid="issue-field-status.ui.status-view.status-button.status-button--text"]';
   const FIELD_HEADING = '[data-component-selector="jira-issue-field-heading-field-heading-title"]';
+  // Ключ задачи: последняя крошка над названием; фолбэк — адрес /browse/KEY или ?selectedIssue=KEY
+  const CURRENT_ISSUE = '[data-testid="issue.views.issue-base.foundation.breadcrumbs.current-issue.item"]';
+  const KEY_RE = /\/browse\/([A-Z][A-Z0-9_]*)-\d+(?:[/?#]|$)/i;
+  const SELECTED_RE = /^([A-Z][A-Z0-9_]*)-\d+$/i;
 
   const normalize = DevHelper.normalize;
 
@@ -68,6 +72,20 @@
       if (heading) return fieldContainer(heading);
     }
     return null;
+  }
+
+  // Проект задачи (ключ до дефиса, в верхнем регистре) или null, если ключ не нашли.
+  // Крошку ищем, как и поле, в той же задаче: страница под модальным окном — другая задача
+  function projectOf(anchor) {
+    for (let el = anchor.parentElement; el; el = el.parentElement) {
+      if (el.querySelectorAll(STATUS_ANCHOR).length > 1) break;
+      const link = el.querySelector(CURRENT_ISSUE + ' a[href], a' + CURRENT_ISSUE + '[href]');
+      const m = link && (link.getAttribute('href') || '').match(KEY_RE);
+      if (m) return m[1].toUpperCase();
+    }
+    const selected = new URLSearchParams(location.search).get('selectedIssue') || '';
+    const m = selected.match(SELECTED_RE) || location.pathname.match(KEY_RE);
+    return m ? m[1].toUpperCase() : null;
   }
 
   // Ссылки на MR из поля: и из <a href>, и из текста (поле может быть текстовым).
@@ -113,15 +131,19 @@
     return kinds;
   }
 
-  // Обязательные метки из настроек; предупреждение выключено — как будто их нет
-  function activeRequired() {
+  // Обязательные метки из настроек; предупреждение выключено или задача не из заданных проектов — как будто их нет.
+  // Проект задачи не узнали, а проекты заданы — тоже не показываем: лучше промолчать, чем предупредить не там
+  function activeRequired(anchor) {
     const current = settings || feature.defaults;
-    return current.labelsWarning ? parseRequired(requiredValue) : [];
+    if (!current.labelsWarning) return [];
+    const projects = parseLabels(current.labelsProjects).map((key) => key.toUpperCase());
+    if (projects.length && !projects.includes(projectOf(anchor))) return [];
+    return parseRequired(requiredValue);
   }
 
   // Поля нет на странице (свёрнуто в «More fields») — метки неизвестны, зря не предупреждаем
   function missesRequired(anchor) {
-    const required = activeRequired();
+    const required = activeRequired(anchor);
     if (!required.length) return false;
     const labels = labelsOf(anchor, (settings || feature.defaults).labelsField || feature.defaults.labelsField);
     return !!labels && !labels.some((label) => isRequired(label, required));
@@ -132,7 +154,7 @@
     const name = (settings || feature.defaults).labelsField || feature.defaults.labelsField;
     const field = findField(anchor, normalize(name));
     if (!field) return;
-    const required = activeRequired();
+    const required = activeRequired(anchor);
     field.querySelectorAll(LABEL_OPTION).forEach((option) => {
       const wanted = isRequired(option.textContent, required);
       if (option.hasAttribute(REQUIRED_OPTION_ATTR) !== wanted) option.toggleAttribute(REQUIRED_OPTION_ATTR, wanted);

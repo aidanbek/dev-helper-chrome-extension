@@ -56,6 +56,12 @@
     фичи «Релизы Jira». Не заданы обязательные метки или поле с метками не видно в задаче — предупреждения нет.
     В выпадающем списке поля с метками обязательные выделены и подписаны.
   </p>
+  <label for="jira-labelsProjects">Проекты</label>
+  <input type="text" id="jira-labelsProjects" data-field="labelsProjects" data-tags placeholder="PRJ, SHOP" spellcheck="false">
+  <p class="hint">
+    Ключи проектов Jira — часть ключа задачи до дефиса (PRJ в PRJ-123), без учёта регистра. Предупреждение
+    и выделение в списке меток — только в задачах этих проектов. Пусто — во всех проектах.
+  </p>
 </fieldset>
 <fieldset>
   <legend>Метки в таблицах задач</legend>
