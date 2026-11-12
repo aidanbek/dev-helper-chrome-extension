@@ -113,6 +113,18 @@ Settings import and export — as a file, via the clipboard or from a URL: a bac
 Works only on sites you add in the settings: access is requested for each site separately.
 No data is collected: settings stay in your browser, pages are processed locally.
 
+### Что нового в 1.10.0 / What's new in 1.10.0
+
+RU:
+• Cookie: кнопки «Удалить все cookie» (все cookie, которые видит сайт; второй клик подтверждает) и «Очистить кэш»
+  (HTTP-кэш и Cache Storage только текущего сайта) в окне расширения.
+• Задачи Jira: предупреждение об обязательных метках можно ограничить проектами Jira.
+
+EN:
+• Cookie: "Delete all cookies" (every cookie the site sees; a second click confirms) and "Clear cache"
+  (HTTP cache and Cache Storage of the current site only) buttons in the extension popup.
+• Jira issues: the missing required labels warning can be limited to selected Jira projects.
+
 ### Что нового в 1.9.0 / What's new in 1.9.0
 
 RU:
